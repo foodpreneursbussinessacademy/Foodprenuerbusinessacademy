@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Food Value Addition Course for Farmers - Student Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- DASHBOARD VARIABLES --- */
+        :root {
+            --bg-body: #f4f6fb;
+            --bg-card: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --primary-gradient: linear-gradient(135deg, #5b5fff, #7a7eff);
+            --primary-solid: #5b5fff;
+            --accent-yellow: #ffb700;
+            --accent-red: #dc2626;
+            --success-green: #16a34a;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #0f172a; --bg-card: #1e293b; --text-main: #f3f4f6;
+            --text-muted: #9ca3af; --border-color: #334155;
+            --shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        * { box-sizing: border-box; transition: background 0.3s, color 0.3s; }
+        body { margin: 0; padding: 0; width: 100%; font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--text-main); }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; min-height: 100vh; }
+
+        /* HEADER & MODULES */
+        .header {
+            background: var(--primary-gradient); color: #fff; padding: 30px;
+            border-radius: 20px; margin-bottom: 30px; position: relative; overflow: hidden;
+            box-shadow: 0 10px 25px rgba(91, 95, 255, 0.3);
+        }
+        .header h2 { margin: 0; font-family: 'Playfair Display', serif; font-size: 2.5rem; }
+        
+        .top-nav-row { display: flex; justify-content: space-between; margin-top: 20px; gap: 10px; flex-wrap: wrap; }
+        .nav-btn, .theme-switch {
+            background: rgba(255,255,255,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 16px; border-radius: 50px; cursor: pointer; backdrop-filter: blur(5px); font-weight: 600;
+        }
+        .theme-switch { background: var(--accent-yellow); color: #000; border: none; }
+
+        .progress-bar { height: 8px; background: rgba(255,255,255,0.3); border-radius: 10px; margin-top: 20px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--accent-yellow); width: 0%; transition: width 0.5s ease; }
+
+        /* MODULE CARDS */
+        .modules { display: flex; flex-direction: column; gap: 20px; }
+        .module { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; overflow: hidden; box-shadow: var(--shadow); }
+        .module.locked { opacity: 0.6; pointer-events: none; filter: grayscale(1); }
+        
+        .module-header { padding: 20px 25px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; }
+        .module-header h3 { margin: 0; font-size: 1.2rem; color: var(--text-main); }
+        
+        /* PREVIEW (Truncated) */
+        .lesson-preview { 
+            padding: 25px; color: var(--text-muted); height: 120px; overflow: hidden; 
+            mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+        }
+        .lesson-preview img { display: none; }
+        
+        .module-footer { padding: 15px 25px; border-top: 1px solid var(--border-color); text-align: center; background: rgba(0,0,0,0.02); }
+
+        /* FULL READER MODAL */
+        .reader-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-body); z-index: 1000; overflow-y: auto; }
+        .reader-container { max-width: 800px; margin: 0 auto; padding: 40px 20px; background: var(--bg-card); min-height: 100vh; padding-bottom: 120px; }
+        
+        .reader-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid var(--border-color); padding-bottom: 20px; }
+        .close-reader { background: transparent; border: 2px solid var(--text-muted); width: 40px; height: 40px; border-radius: 50%; cursor: pointer; color: var(--text-main); }
+        
+        .reader-content { font-size: 1.15rem; line-height: 1.8; color: var(--text-main); margin-bottom: 40px; }
+        .reader-content img { max-width: 100%; border-radius: 12px; margin: 20px 0; display: block; }
+
+        /* MUSIC PLAYER STYLE TTS CONTROLS */
+        .tts-player {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #1e293b; padding: 15px 25px; border-radius: 16px;
+            width: 90%; max-width: 500px; display: none; flex-direction: column; gap: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 2000;
+        }
+        .tts-controls-row { display: flex; align-items: center; justify-content: center; gap: 20px; }
+        .tts-btn { background: transparent; border: none; color: #fff; font-size: 1.5rem; cursor: pointer; }
+        .tts-btn:hover { color: var(--accent-yellow); }
+        .tts-seek-container { width: 100%; display: flex; align-items: center; gap: 10px; color: #9ca3af; font-size: 0.8rem; }
+        .tts-slider { -webkit-appearance: none; width: 100%; height: 5px; background: #475569; border-radius: 5px; outline: none; }
+        .tts-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; background: var(--accent-yellow); border-radius: 50%; cursor: pointer; }
+
+        /* QUIZ */
+        .quiz-wrapper { margin-top: 40px; padding: 30px; border: 2px dashed var(--border-color); border-radius: 15px; background: rgba(91, 95, 255, 0.03); text-align: center; }
+        .options-group label { display: block; padding: 15px; border: 2px solid var(--border-color); border-radius: 10px; margin-bottom: 10px; cursor: pointer; text-align: left; background: var(--bg-card); }
+        .options-group label:hover { border-color: var(--primary-solid); }
+
+        /* Buttons */
+        .btn-primary { background: var(--primary-solid); color: #fff; padding: 12px 25px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
+        .btn-outline { background: transparent; border: 2px solid var(--border-color); color: var(--text-main); width: 100%; padding: 10px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+        .btn-outline:hover { color: var(--primary-solid); border-color: var(--primary-solid); }
+
+        /* --- CERTIFICATE SECTION STYLES --- */
+        #certificateSection { display: none; }
+        #nameInput { text-align: center; background: var(--bg-card); padding: 40px; border-radius: 20px; border: 2px solid var(--accent-yellow); max-width: 600px; margin: 40px auto; }
+        #nameForm input { width: 100%; padding: 15px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #ccc; }
+        
+        #certificatePreviewWrapper { 
+            display: none; 
+            width: 100%; 
+            overflow-x: auto; 
+            padding-bottom: 40px; 
+            text-align: center;
+        }
+
+        /* Certificate CSS Specifics (A4 Dimensions) */
+        .certificate {
+            width: 794px;
+            height: 1123px; /* A4 Ratio */
+            margin: 20px auto;
+            background: #ffffff;
+            border: 14px solid #f7931e;
+            position: relative;
+            box-sizing: border-box;
+            text-align: left;
+            font-family: "Segoe UI", Arial, sans-serif;
+            color: #000;
+        }
+
+        .cert-top-band {
+            height: 190px;
+            background: linear-gradient(135deg, #f7931e 60%, #cfcfcf 60%);
+            padding: 30px 40px;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+        }
+
+        .cert-logos {
+            background: #ffffff;
+            padding: 18px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 6px;
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .cert-logos img { height: 65px; max-width: 240px; object-fit: contain; }
+        .cert-content { padding: 90px 90px 60px; text-align: center; }
+        .cert-title { font-size: 46px; font-weight: 700; margin-bottom: 18px; color: #000; }
+        .cert-subtitle { font-size: 18px; color: #555; margin-bottom: 30px; }
+        .cert-name { font-size: 38px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; text-transform: uppercase; color: #000; }
+        .cert-divider { width: 60%; height: 2px; background: #000; margin: 16px auto 40px; }
+        .cert-description { font-size: 20px; margin-bottom: 18px; color: #333; }
+        .cert-course { font-size: 32px; font-weight: 700; color: #f7931e; margin-bottom: 40px; }
+        .cert-award { font-size: 19px; color: #444; line-height: 1.7; max-width: 650px; margin: auto; }
+        .cert-award strong { color: #000; }
+        
+        .cert-footer {
+            position: absolute; bottom: 60px; width: 100%; padding: 0 90px;
+            box-sizing: border-box; display: flex; justify-content: space-between;
+            align-items: flex-end; font-size: 15px; color: #444;
+        }
+        .cert-footer strong { color: #000; }
+        .cert-signature { text-align: center; }
+        .cert-signature img { width: 180px; height: auto; display: block; margin: 0 auto 6px; opacity: 0.6; }
+        .cert-signature-name { font-weight: 600; font-size: 14px; color: #000; }
+        .cert-signature-title { font-size: 13px; color: #555; }
+
+        /* PRINT CONFIGURATION */
+        @media print {
+            @page { size: A4 portrait; margin: 0; }
+            body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body * { visibility: hidden; }
+            #certificatePreviewWrapper, #certificatePreviewWrapper * { visibility: visible; }
+            #certificatePreviewWrapper { 
+                position: absolute; top: 0; left: 0; width: 100%; height: 100%; margin: 0; padding: 0; 
+                background: white; overflow: hidden; z-index: 9999;
+            }
+            .certificate { 
+                margin: 0; width: 100%; height: 100%; border: 14px solid #f7931e !important; box-shadow: none; 
+                transform-origin: top left;
+            }
+            .print-btn-container { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="mainDashboard">
+    <div class="header">
+        <h2>Food Value Addition Course for Farmers</h2>
+        <p>Student ID: <span id="studentIdDisplay">Connecting...</span></p>
+        <div class="top-nav-row">
+            <button class="nav-btn" onclick="location.href='https://jasonmillz263.github.io/Database-/student.html'">⬅ Dashboard</button>
+            <button class="theme-switch" onclick="toggleTheme()">🌗 Mode</button>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+
+    <div id="modules" class="modules">
+        <div style="text-align:center; padding:20px;">Loading...</div>
+    </div>
+
+    <div id="certificateSection">
+        <div id="nameInput">
+            <h3>🎉 Course Completed!</h3>
+            <p>Enter your name for the certificate. This will be saved permanently.</p>
+            <form id="nameForm">
+                <input type="text" id="firstNameInput" placeholder="First Name" required>
+                <input type="text" id="lastNameInput" placeholder="Last Name" required>
+                <button type="submit" class="btn-primary" id="generateBtn">Generate & Save Certificate</button>
+            </form>
+        </div>
+
+        <div id="certificatePreviewWrapper">
+            <div class="certificate">
+                <div class="cert-top-band">
+                    <div class="cert-logos">
+                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhnNFRpSiba0ztBBehfuW2MWV7LjXfqoVWvjiHT_gLRNgmSSOQv74I5h9gVCyAF4RBjpeMbAYKSfmhpyE2v2ihNRlt4rC63vA0KIdHH0ZEkidtlm37CLrNV0Ty_vBfvQgRnfCmsGycBGwCE_sNedqdNStWhLbntzKfIVx6RFkNU6YIyRBplI0S-NODhKRNa/s1600/IMG-20251223-WA0001.jpg" alt="FoodPreneur Logo">
+                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" alt="RHAC Logo">
+                    </div>
+                </div>
+
+                <div class="cert-content">
+                    <div class="cert-title">Certificate of Completion</div>
+                    <div class="cert-subtitle">This is to certify that</div>
+
+                    <div class="cert-name" id="certStudentName">PARTICIPANT NAME</div>
+                    <div class="cert-divider"></div>
+
+                    <div class="cert-description">
+                        has successfully completed the course entitled
+                    </div>
+
+                    <div class="cert-course">Food Value Addition Course for Farmers</div>
+
+                    <div class="cert-award">
+                        This certificate is hereby <strong>awarded by the FoodPreneur Business Academy</strong>,
+                        in partnership with <strong>RHAC</strong>, in recognition of commitment,
+                        competence, and successful completion of all course requirements.
+                    </div>
+                </div>
+
+                <div class="cert-footer">
+                    <div>
+                        <strong>Certificate No:</strong> <span id="certNum">FPBA-0000</span><br>
+                        <strong>Date of Completion:</strong> <span id="certDate">01 January 2025</span>
+                    </div>
+
+                    <div class="cert-signature">
+                        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhnNFRpSiba0ztBBehfuW2MWV7LjXfqoVWvjiHT_gLRNgmSSOQv74I5h9gVCyAF4RBjpeMbAYKSfmhpyE2v2ihNRlt4rC63vA0KIdHH0ZEkidtlm37CLrNV0Ty_vBfvQgRnfCmsGycBGwCE_sNedqdNStWhLbntzKfIVx6RFkNU6YIyRBplI0S-NODhKRNa/s1600/IMG-20251223-WA0001.jpg" style="opacity:0; width:1px; height:50px;" alt="Signature Space">
+                        <div class="cert-signature-name">Academy Director</div>
+                        <div class="cert-signature-title">FoodPreneur Business Academy</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="print-btn-container" style="text-align:center; margin-top:20px;">
+                <button class="btn-primary" onclick="window.print()">Print Certificate / Save as PDF</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="readerModal" class="reader-modal">
+    <div class="reader-container">
+        <div class="reader-header">
+            <h2 id="readerTitle">Module</h2>
+            <button class="close-reader" onclick="closeReader()">✕</button>
+        </div>
+        
+        <div id="readerBody" class="reader-content"></div>
+
+        <div id="quizContainer" class="quiz-wrapper"></div>
+    </div>
+
+    <div class="tts-player" id="ttsPlayer">
+        <div class="tts-seek-container">
+            <span id="ttsCurrentTime">0%</span>
+            <input type="range" min="0" max="100" value="0" class="tts-slider" id="ttsSeekSlider" oninput="TTSManager.seek(this.value)">
+            <span id="ttsTotalTime">100%</span>
+        </div>
+        <div class="tts-controls-row">
+            <button class="tts-btn" onclick="TTSManager.prev()">⏮</button>
+            <button class="tts-btn" id="ttsPlayPauseBtn" onclick="TTSManager.toggle()">▶</button>
+            <button class="tts-btn" onclick="TTSManager.next()">⏭</button>
+            <button class="tts-btn" onclick="TTSManager.stop()">⏹</button>
+        </div>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // --- 1. CONFIGURATION ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+        authDomain: "students-login-29409.firebaseapp.com",
+        projectId: "students-login-29409"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    const COURSE_ID = "food_value_addition_course_for_farmers";
+    
+    // --- 2. ADVANCED TEXT CLEANER ---
+    function cleanLessonContent(htmlContent) {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent;
+        let contentStr = tempDiv.innerHTML;
+        contentStr = contentStr.replace(/<[^>]*>.*?I can't see the image upload.*?<\/[^>]*>/gi, ""); 
+        contentStr = contentStr.replace(/I can't see the image upload on quill/gi, "");
+        return contentStr;
+    }
+
+    // --- 3. TTS ENGINE ---
+    window.TTSManager = {
+        sentences: [], currentIndex: 0, isPlaying: false, synth: window.speechSynthesis, utterance: null,
+        init: function(htmlContent) {
+            this.stop();
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = htmlContent;
+            const text = tempDiv.innerText;
+            this.sentences = text.match( /[^\.!\?]+[\.!\?]+/g ) || [text];
+            this.currentIndex = 0;
+            document.getElementById('ttsPlayer').style.display = 'flex';
+            this.updateSlider();
+        },
+        speakSentence: function() {
+            this.synth.cancel();
+            if (this.currentIndex >= this.sentences.length) { this.stop(); return; }
+            const text = this.sentences[this.currentIndex];
+            this.utterance = new SpeechSynthesisUtterance(text);
+            this.utterance.lang = 'en-US';
+            this.utterance.onend = () => {
+                this.currentIndex++;
+                if (this.currentIndex < this.sentences.length && this.isPlaying) {
+                    this.speakSentence(); this.updateSlider();
+                } else {
+                    this.isPlaying = false; this.updateUI();
+                }
+            };
+            this.synth.speak(this.utterance);
+            this.updateUI(); this.updateSlider();
+        },
+        toggle: function() { this.isPlaying ? this.pause() : this.play(); },
+        play: function() { this.isPlaying = true; !this.synth.speaking ? this.speakSentence() : this.synth.resume(); this.updateUI(); },
+        pause: function() { this.isPlaying = false; this.synth.pause(); this.updateUI(); },
+        prev: function() { if (this.currentIndex > 0) { this.currentIndex--; this.speakSentence(); } },
+        next: function() { if (this.currentIndex < this.sentences.length - 1) { this.currentIndex++; this.speakSentence(); } },
+        seek: function(val) { const pct = val / 100; this.currentIndex = Math.floor(pct * this.sentences.length); if(this.isPlaying) this.speakSentence(); else this.updateUI(); },
+        stop: function() { this.isPlaying = false; this.synth.cancel(); this.currentIndex = 0; this.updateUI(); this.updateSlider(); },
+        updateUI: function() { document.getElementById('ttsPlayPauseBtn').innerHTML = this.isPlaying ? '⏸' : '▶'; },
+        updateSlider: function() { const slider = document.getElementById('ttsSeekSlider'); if(this.sentences.length > 0) { const val = (this.currentIndex / this.sentences.length) * 100; slider.value = val; document.getElementById('ttsCurrentTime').innerText = Math.round(val) + "%"; } }
+    };
+
+    // --- 4. APP LOGIC ---
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            document.getElementById('studentIdDisplay').innerText = user.uid;
+            loadModules(user);
+        } else {
+            document.getElementById('modules').innerHTML = "<p style='text-align:center'>Please log in.</p>";
+        }
+    });
+
+    window.loadModules = async function(user) {
+        const modulesContainer = document.getElementById('modules');
+        const modsSnap = await db.collection("courses").doc(COURSE_ID).collection("modules").where("status", "==", "published").get();
+        const userSnap = await db.collection("students").doc(user.uid).get();
+        const enrolledData = userSnap.data()?.enrolledCourses?.[COURSE_ID] || {};
+        const completedData = enrolledData.completedModules || {};
+        
+        let doneCount = 0;
+        let isPrevModuleDone = true;
+        let moduleNumber = 1;
+        
+        modulesContainer.innerHTML = "";
+
+        modsSnap.forEach(doc => {
+            const mData = doc.data();
+            const mId = doc.id;
+            const isCompleted = completedData[mId] === true;
+            const isLocked = !isPrevModuleDone;
+            if (isCompleted) doneCount++;
+            const cleanedContent = cleanLessonContent(mData.content || "");
+            const modDiv = document.createElement("div");
+            modDiv.className = `module ${isLocked ? 'locked' : ''} ${isCompleted ? 'completed' : ''}`;
+            
+            let actionBtn = isLocked 
+                ? `<p>🔒 Locked</p>` 
+                : `<button class="btn-outline" onclick="openReader('${mId}', '${encodeURIComponent(mData.title)}', '${encodeURIComponent(cleanedContent)}')">📖 Read & Quiz</button>`;
+
+            let badge = isCompleted ? `<span class="status-badge" style="display:inline-block">✅ Done</span>` : '';
+
+            modDiv.innerHTML = `
+                <div class="module-header"><h3>Module ${moduleNumber}: ${mData.title}</h3>${badge}</div>
+                <div class="lesson-preview">${cleanedContent}</div>
+                <div class="module-footer">${actionBtn}</div>
+            `;
+            modulesContainer.appendChild(modDiv);
+            isPrevModuleDone = isCompleted;
+            moduleNumber++;
+        });
+
+        const percent = Math.round((doneCount / modsSnap.size) * 100) || 0;
+        document.getElementById('progressFill').style.width = percent + "%";
+        
+        // CHECK IF COMPLETED ALL
+        if (doneCount === modsSnap.size && modsSnap.size > 0) {
+            // Check if certificate already exists in DB
+            if (enrolledData.certificate) {
+                // If yes, skip input, show certificate directly
+                renderCertificate(enrolledData.certificate.name, enrolledData.certificate.date, enrolledData.certificate.number);
+            } else {
+                // If no, show input form
+                showCertificateInput();
+            }
+        }
+    };
+
+    // --- 5. READER & QUIZ INTEGRATION ---
+    window.openReader = function(mId, title, content) {
+        document.getElementById('readerTitle').innerText = decodeURIComponent(title);
+        document.getElementById('readerBody').innerHTML = decodeURIComponent(content);
+        document.getElementById('readerModal').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+
+        // Init TTS
+        TTSManager.init(document.getElementById('readerBody').innerHTML);
+
+        // START NEW QUIZ LOGIC
+        prepareQuiz(mId);
+    };
+
+    window.closeReader = function() {
+        document.getElementById('readerModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        TTSManager.stop();
+        document.getElementById('ttsPlayer').style.display = 'none';
+        clearInterval(quizTimerInterval); 
+    };
+
+    // --- 6. GLOBAL QUIZ STATE ---
+    let currentQuizData = [];
+    let currentQIndex = 0;
+    let currentScore = 0;
+    let quizTimerInterval = null;
+    let activeModuleId = "";
+
+    window.prepareQuiz = async function(mId) {
+        activeModuleId = mId;
+        const quizArea = document.getElementById('quizContainer');
+        quizArea.innerHTML = "<h3>Loading Quiz...</h3>";
+
+        try {
+            const modDoc = await db.collection("courses").doc(COURSE_ID).collection("modules").doc(mId).get();
+            if (modDoc.exists && modDoc.data().quizzes) {
+                currentQuizData = modDoc.data().quizzes;
+                showStartScreen();
+            } else {
+                quizArea.innerHTML = "<p>No quiz available for this lesson.</p>";
+            }
+        } catch (e) {
+            console.error(e);
+            quizArea.innerHTML = "<p>Error connecting to quiz system.</p>";
+        }
+    };
+
+    window.showStartScreen = function() {
+        const quizArea = document.getElementById('quizContainer');
+        quizArea.innerHTML = `
+            <div style="padding: 20px; border: 2px solid var(--primary-solid); border-radius: 12px;">
+                <h3>Assess Your Knowledge</h3>
+                <p>Module Quiz: ${currentQuizData.length} Questions</p>
+                <p>Passing Grade: 60%</p>
+                <button class="btn-primary" onclick="startQuizEngine()">Start Quiz Now</button>
+            </div>
+        `;
+    };
+
+    window.startQuizEngine = function() {
+        currentQIndex = 0;
+        currentScore = 0;
+        renderQuestion();
+    };
+
+    window.renderQuestion = function() {
+        const quizArea = document.getElementById('quizContainer');
+        clearInterval(quizTimerInterval);
+
+        if (currentQIndex >= currentQuizData.length) {
+            processFinalResults();
+            return;
+        }
+
+        const q = currentQuizData[currentQIndex];
+        let timeLeft = 30;
+
+        quizArea.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <span style="font-weight:bold;">Question ${currentQIndex + 1} of ${currentQuizData.length}</span>
+                <span id="qTimer" style="color:var(--accent-red); font-weight:800; font-size:1.2rem;">⏱ 30s</span>
+            </div>
+            <p style="text-align:left; font-size:1.1rem; margin-bottom:20px;">${q.question}</p>
+            <div class="options-group">
+                ${q.options.map((opt) => `
+                    <label>
+                        <input type="radio" name="quizOpt" value="${opt}">
+                        ${opt}
+                    </label>
+                `).join('')}
+            </div>
+            <button class="btn-primary" style="width:100%; margin-top:20px;" onclick="validateAndNext()">Submit Answer</button>
+        `;
+
+        quizTimerInterval = setInterval(() => {
+            timeLeft--;
+            const timerEl = document.getElementById('qTimer');
+            if(timerEl) timerEl.innerText = `⏱ ${timeLeft}s`;
+            if (timeLeft <= 0) {
+                clearInterval(quizTimerInterval);
+                validateAndNext(); 
+            }
+        }, 1000);
+    };
+
+    window.validateAndNext = function() {
+        const selected = document.querySelector('input[name="quizOpt"]:checked');
+        const correctAnswer = currentQuizData[currentQIndex].answer;
+
+        if (selected && selected.value.trim() === correctAnswer.trim()) {
+            currentScore++;
+        }
+
+        currentQIndex++;
+        renderQuestion();
+    };
+
+    window.processFinalResults = async function() {
+        const quizArea = document.getElementById('quizContainer');
+        const percentage = (currentScore / currentQuizData.length) * 100;
+        const isPass = percentage >= 60;
+
+        if (isPass) {
+            if (auth.currentUser) {
+                await db.collection("students").doc(auth.currentUser.uid).set({
+                    enrolledCourses: {
+                        [COURSE_ID]: { 
+                            completedModules: { [activeModuleId]: true } 
+                        }
+                    }
+                }, { merge: true });
+            }
+
+            quizArea.innerHTML = `
+                <div style="text-align:center;">
+                    <h2 style="color:var(--success-green);">🎉 Passed!</h2>
+                    <p style="font-size:1.5rem; font-weight:bold;">Score: ${Math.round(percentage)}%</p>
+                    <p>Well done! This module is now complete.</p>
+                    <button class="btn-primary" onclick="location.reload()">Return & Unlock Next</button>
+                </div>
+            `;
+        } else {
+            quizArea.innerHTML = `
+                <div style="text-align:center;">
+                    <h2 style="color:var(--accent-red);">❌ Try Again</h2>
+                    <p style="font-size:1.5rem; font-weight:bold;">Score: ${Math.round(percentage)}%</p>
+                    <p>You need at least 60% to pass.</p>
+                    <button class="btn-primary" style="background:#6b7280;" onclick="startQuizEngine()">Retry Quiz</button>
+                </div>
+            `;
+        }
+    };
+
+    // --- 7. UTILS & CERTIFICATE SAVING ---
+    function showCertificateInput() {
+        document.getElementById('certificateSection').style.display = 'block';
+        document.getElementById('nameInput').style.display = 'block'; // Ensure form is visible
+        document.getElementById('certificatePreviewWrapper').style.display = 'none';
+
+        const form = document.getElementById('nameForm');
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('generateBtn');
+            btn.innerText = "Saving...";
+            btn.disabled = true;
+
+            const fullName = (document.getElementById('firstNameInput').value + " " + document.getElementById('lastNameInput').value).toUpperCase();
+            const dateStr = new Date().toLocaleDateString();
+            const certNum = "FPBA-" + new Date().getFullYear() + "-" + Math.floor(1000 + Math.random() * 9000);
+
+            // SAVE TO FIREBASE
+            if(auth.currentUser) {
+                try {
+                    await db.collection("students").doc(auth.currentUser.uid).set({
+                        enrolledCourses: {
+                            [COURSE_ID]: {
+                                certificate: {
+                                    name: fullName,
+                                    date: dateStr,
+                                    number: certNum,
+                                    issuedAt: firebase.firestore.FieldValue.serverTimestamp()
+                                }
+                            }
+                        }
+                    }, { merge: true });
+                    
+                    // Show Cert
+                    renderCertificate(fullName, dateStr, certNum);
+                } catch(err) {
+                    alert("Error saving certificate: " + err.message);
+                    btn.innerText = "Generate";
+                    btn.disabled = false;
+                }
+            }
+        };
+    }
+
+    function renderCertificate(name, date, number) {
+        // Populate Data
+        document.getElementById('certStudentName').innerText = name;
+        document.getElementById('certDate').innerText = date;
+        document.getElementById('certNum').innerText = number;
+
+        // Switch Views
+        document.getElementById('certificateSection').style.display = 'block';
+        document.getElementById('nameInput').style.display = 'none';
+        document.getElementById('certificatePreviewWrapper').style.display = 'block';
+    }
+
+    window.toggleTheme = function() {
+        const b = document.body;
+        b.getAttribute('data-theme') === 'dark' ? b.removeAttribute('data-theme') : b.setAttribute('data-theme', 'dark');
+    };
+});
+</script>
+</body>
+  </html>
