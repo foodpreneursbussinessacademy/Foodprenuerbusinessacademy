@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FoodPreneurs Academy | Login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+    /* --- COLOR PALETTE --- */
+    :root {
+        /* Real Purple-Blue Gradient */
+        --brand-gradient: linear-gradient(135deg, #1e3a8a 0%, #4c1d95 100%); /* Deep Blue to Deep Purple */
+        --primary-btn: #4f46e5;
+        --secondary-btn-bg: #f3f4f6;
+        --secondary-btn-text: #4c1d95;
+        --accent-yellow: #facc15;
+        --error-red: #ef4444;
+        --text-main: #1e293b;
+        --text-sub: #64748b;
+        --bg-color: #eef2ff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+
+    body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-color);
+        /* Subtle background pattern */
+        background-image: radial-gradient(#4f46e5 0.5px, transparent 0.5px), radial-gradient(#4f46e5 0.5px, #eef2ff 0.5px);
+        background-size: 20px 20px;
+        background-position: 0 0, 10px 10px;
+        padding: 20px;
+    }
+
+    /* --- CARD DESIGN --- */
+    .login-card {
+        background: #fff;
+        width: 100%;
+        max-width: 1000px;
+        min-height: 600px;
+        border-radius: 24px;
+        box-shadow: 0 20px 60px rgba(30, 58, 138, 0.15); /* Blue-ish shadow */
+        display: flex;
+        overflow: hidden;
+    }
+
+    /* --- LEFT SIDE (Brand) --- */
+    .brand-section {
+        width: 45%;
+        background: var(--brand-gradient);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 40px;
+        color: white;
+        text-align: center;
+        position: relative;
+    }
+
+    .brand-section::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: url('https://www.transparenttextures.com/patterns/cubes.png'); /* Subtle texture */
+        opacity: 0.1;
+    }
+
+    .logo-img {
+        width: 140px;
+        margin-bottom: 20px;
+        z-index: 2;
+        filter: drop-shadow(0 8px 12px rgba(0,0,0,0.3));
+        animation: float 5s ease-in-out infinite;
+    }
+
+    .academy-name {
+        font-size: 28px;
+        font-weight: 700;
+        z-index: 2;
+        margin-bottom: 8px;
+    }
+
+    .year-tag {
+        background: rgba(255, 255, 255, 0.15);
+        padding: 6px 18px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--accent-yellow);
+        letter-spacing: 1px;
+        z-index: 2;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* --- RIGHT SIDE (Form) --- */
+    .form-section {
+        width: 55%;
+        padding: 50px 60px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+    }
+
+    h2 {
+        font-size: 32px;
+        color: var(--text-main);
+        margin-bottom: 10px;
+    }
+
+    .instruction-text {
+        color: var(--text-sub);
+        font-size: 15px;
+        margin-bottom: 35px;
+        line-height: 1.6;
+    }
+
+    /* Inputs */
+    .input-group {
+        position: relative;
+        margin-bottom: 22px;
+    }
+
+    .input-group input {
+        width: 100%;
+        padding: 16px 16px 16px 45px;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 15px;
+        transition: 0.3s;
+        outline: none;
+        background: #f8fafc;
+        color: var(--text-main);
+    }
+
+    .input-group i.icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+    }
+
+    .input-group input:focus {
+        border-color: var(--primary-btn);
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+    }
+
+    .toggle-pass {
+        position: absolute;
+        right: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        cursor: pointer;
+        color: #94a3b8;
+        transition: color 0.2s;
+    }
+    .toggle-pass:hover { color: var(--primary-btn); }
+
+    /* Actions */
+    .form-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        font-size: 14px;
+        color: var(--text-sub);
+    }
+
+    .forgot-pass {
+        color: var(--primary-btn);
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    /* Buttons */
+    .btn {
+        width: 100%;
+        padding: 16px;
+        border-radius: 12px;
+        border: none;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-login {
+        background: var(--brand-gradient);
+        color: white;
+        box-shadow: 0 10px 20px -5px rgba(76, 29, 149, 0.4);
+    }
+    .btn-login:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 25px -5px rgba(76, 29, 149, 0.5);
+    }
+
+    /* Divider */
+    .divider {
+        margin: 35px 0;
+        border-top: 1px solid #e2e8f0;
+        position: relative;
+        text-align: center;
+    }
+    .divider span {
+        background: #fff;
+        padding: 0 15px;
+        color: var(--text-sub);
+        font-size: 13px;
+        position: relative;
+        top: -10px;
+    }
+
+    /* Create Account Section */
+    .create-account-area {
+        text-align: center;
+    }
+    
+    .create-instruction {
+        font-size: 14px;
+        color: var(--text-sub);
+        margin-bottom: 12px;
+    }
+
+    .btn-signup {
+        background: white;
+        color: var(--secondary-btn-text);
+        border: 2px solid var(--secondary-btn-text);
+    }
+    .btn-signup:hover {
+        background: var(--secondary-btn-bg);
+        transform: translateY(-2px);
+    }
+
+    /* Error Box */
+    .error-msg {
+        color: var(--error-red);
+        background: #fef2f2;
+        border: 1px solid #fee2e2;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        text-align: center;
+        margin-bottom: 20px;
+        display: none;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+        .login-card { flex-direction: column; min-height: auto; }
+        .brand-section { width: 100%; padding: 40px 20px; }
+        .form-section { width: 100%; padding: 40px 25px; }
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-8px); }
+    }
+</style>
+</head>
+<body>
+
+<div class="login-card">
+    
+    <div class="brand-section">
+        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" alt="Logo" class="logo-img">
+        <div class="academy-name">FoodPreneurs<br>Business Academy</div>
+        <div class="year-tag">2026</div>
+    </div>
+
+    <div class="form-section">
+        
+        <div id="errorBox" class="error-msg"></div>
+
+        <h2>Student Login</h2>
+        <p class="instruction-text">
+            Welcome back! Please enter your credentials to access your courses and continue learning.
+        </p>
+
+        <div class="input-group">
+            <i class="fa fa-envelope icon"></i>
+            <input type="email" id="email" placeholder="Email Address">
+        </div>
+
+        <div class="input-group">
+            <i class="fa fa-lock icon"></i>
+            <input type="password" id="password" placeholder="Password">
+            <i class="fa fa-eye toggle-pass" onclick="togglePassword()"></i>
+        </div>
+
+        <div class="form-actions">
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" id="rememberMe"> Remember Me
+            </label>
+            <span class="forgot-pass" onclick="handleForgot()">Forgot Password?</span>
+        </div>
+
+        <button class="btn btn-login" onclick="handleLogin()">
+            <i class="fa fa-sign-in-alt"></i> Login to Portal
+        </button>
+
+        <div class="divider">
+            <span>Or</span>
+        </div>
+
+        <div class="create-account-area">
+            <p class="create-instruction">If you don't have an account yet, create one to get started.</p>
+            <button class="btn btn-signup" onclick="goToSignup()">
+                Create New Account
+            </button>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<script>
+    // --- Configuration ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+        authDomain: "students-login-29409.firebaseapp.com",
+        projectId: "students-login-29409"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    // --- Interaction Logic ---
+
+    function togglePassword() {
+        const passInput = document.getElementById('password');
+        const icon = document.querySelector('.toggle-pass');
+        if (passInput.type === 'password') {
+            passInput.type = 'text';
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            passInput.type = 'password';
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+
+    function showError(message) {
+        const box = document.getElementById('errorBox');
+        
+        // Clearer messages
+        let clearMessage = message;
+        if(message.includes('user-not-found')) clearMessage = "We couldn't find an account with that email.";
+        if(message.includes('wrong-password')) clearMessage = "Incorrect password. Please try again.";
+        if(message.includes('invalid-email')) clearMessage = "Please enter a valid email address.";
+        if(message.includes('too-many-requests')) clearMessage = "Too many failed attempts. Please try again later.";
+
+        box.textContent = clearMessage;
+        box.style.display = 'block';
+    }
+
+    function handleLogin() {
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const remember = document.getElementById('rememberMe').checked;
+        const errorBox = document.getElementById('errorBox');
+        
+        errorBox.style.display = 'none'; // Reset error
+
+        if (!email || !password) {
+            showError("Please enter both your email and password.");
+            return;
+        }
+
+        const persistence = remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
+
+        auth.setPersistence(persistence)
+            .then(() => {
+                return auth.signInWithEmailAndPassword(email, password);
+            })
+            .then(() => {
+                // Success
+                window.location.href = 'student.html';
+            })
+            .catch((error) => {
+                showError(error.message);
+            });
+    }
+
+    function handleForgot() {
+        const email = document.getElementById('email').value.trim();
+        if(!email){
+            showError("Please enter your email address in the field above first.");
+            return;
+        }
+        auth.sendPasswordResetEmail(email)
+            .then(() => alert("Password reset link has been sent to your email."))
+            .catch((error) => showError(error.message));
+    }
+
+    // --- Direct to Signup Page ---
+    function goToSignup() {
+        window.location.href = 'signup.html';
+    }
+</script>
+
+</body>
+</html>
