@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Ticket Dashboard</title>
+    <style>
+        :root { --primary: #4f46e5; --danger: #ef4444; --bg: #f3f4f6; --white: #ffffff; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 0; color: #1f2937; }
+        
+        /* Nav */
+        .navbar { background: var(--primary); color: white; padding: 15px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 50; display: flex; justify-content: space-between; align-items: center; }
+        .navbar h1 { margin: 0; font-size: 18px; font-weight: 600; }
+        
+        .container { max-width: 900px; margin: 30px auto; padding: 0 15px; }
+
+        /* Ticket Card */
+        .ticket-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-left: 5px solid #ccc; }
+        .border-open { border-left-color: #3b82f6; }
+        .border-in_review { border-left-color: #f59e0b; }
+        .border-closed { border-left-color: #10b981; opacity: 0.8; }
+
+        .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .user-info { font-weight: 700; color: #111827; }
+        .user-email { font-weight: 400; color: #6b7280; font-size: 13px; display: block; }
+
+        /* Chat History */
+        .chat-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+        .msg { padding: 8px 12px; border-radius: 8px; font-size: 14px; max-width: 80%; line-height: 1.4; }
+        .msg-student { align-self: flex-start; background: #e5e7eb; color: #1f2937; border-bottom-left-radius: 0; }
+        .msg-admin { align-self: flex-end; background: #e0e7ff; color: #3730a3; border-bottom-right-radius: 0; border: 1px solid #c7d2fe; }
+        .msg-meta { font-size: 10px; opacity: 0.7; margin-top: 4px; display: block; }
+        
+        /* Controls */
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        select { padding: 9px; border-radius: 6px; border: 1px solid #d1d5db; background: white; cursor: pointer; }
+        .reply-input { flex-grow: 1; padding: 9px; border: 1px solid #d1d5db; border-radius: 6px; }
+        
+        /* Buttons */
+        .btn-save { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .btn-save:hover { background: #4338ca; }
+        
+        .btn-delete { background: var(--danger); color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .btn-delete:hover { background: #dc2626; }
+
+        /* Modal & Overlay */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; align-items: center; justify-content: center; }
+        .modal img { max-width: 90%; max-height: 90%; border-radius: 8px; }
+        #loginOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    </style>
+</head>
+<body>
+
+<div id="loginOverlay">
+    <h2>🔒 Admin Access</h2>
+    <p>Please login to verify permissions</p>
+    <button class="btn-save" onclick="adminLogin()">Login as Admin</button>
+</div>
+
+<div class="navbar">
+    <h1>🎟️ Admin Inbox</h1>
+    <button onclick="logout()" style="background:none; border:none; color:white; cursor:pointer;">Logout</button>
+</div>
+
+<div class="container" id="inbox">
+    <p style="text-align:center; color:#6b7280;">Loading tickets...</p>
+</div>
+
+<div id="imgModal" class="modal" onclick="this.style.display='none'">
+    <img id="modalImg" src="">
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    // ADDED: deleteDoc to imports below
+    import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+        authDomain: "students-login-29409.firebaseapp.com",
+        projectId: "students-login-29409",
+        storageBucket: "students-login-29409.firebasestorage.app",
+        messagingSenderId: "634331456872",
+        appId: "1:634331456872:web:6dae360c5e28d8356562dd"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // --- Auth Logic ---
+    window.adminLogin = () => signInWithPopup(auth, new GoogleAuthProvider());
+    window.logout = () => signOut(auth);
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            document.getElementById('loginOverlay').style.display = 'none';
+            loadAllTickets();
+        } else {
+            document.getElementById('loginOverlay').style.display = 'flex';
+        }
+    });
+
+    // --- Load Tickets ---
+    function loadAllTickets() {
+        const q = query(collection(db, "tickets"), orderBy("lastUpdated", "desc"));
+        
+        onSnapshot(q, (snapshot) => {
+            const inbox = document.getElementById("inbox");
+            if(snapshot.empty) {
+                inbox.innerHTML = "<div style='text-align:center; padding:50px;'>🎉 All caught up! No tickets.</div>";
+                return;
+            }
+
+            inbox.innerHTML = snapshot.docs.map(docSnap => {
+                const t = docSnap.data();
+                const id = docSnap.id;
+                
+                // Build Messages HTML
+                let messagesHtml = '';
+                if (t.messages && Array.isArray(t.messages)) {
+                    messagesHtml = t.messages.map(m => {
+                        const isAdm = m.sender === 'admin';
+                        const time = new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                        return `
+                            <div class="msg ${isAdm ? 'msg-admin' : 'msg-student'}">
+                                <div>${m.message}</div>
+                                ${m.attachment ? `<div style="margin-top:5px;"><a href="#" onclick="openImage('${m.attachment}'); return false;" style="font-size:12px; color:blue;">📸 View Image</a></div>` : ''}
+                                <span class="msg-meta">${m.sender} • ${time}</span>
+                            </div>
+                        `;
+                    }).join("");
+                } else if (t.message) {
+                    messagesHtml = `<div class="msg msg-student">${t.message}<br><small>Old format</small></div>`;
+                }
+
+                return `
+                <div class="ticket-card border-${t.status}">
+                    <div class="header-row">
+                        <div>
+                            <span class="user-info">${t.studentName || 'Unknown'}</span>
+                            <span class="user-email">${t.studentEmail}</span>
+                        </div>
+                        <div style="text-align:right">
+                            <span style="font-size:12px; font-weight:bold; text-transform:uppercase; color:#4f46e5;">${t.category}</span><br>
+                            <strong style="font-size:14px;">${t.subject}</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-box" id="chat-${id}">
+                        ${messagesHtml}
+                    </div>
+
+                    <div class="controls">
+                        <select id="status-${id}">
+                            <option value="open" ${t.status === 'open' ? 'selected' : ''}>🔵 Open</option>
+                            <option value="in_review" ${t.status === 'in_review' ? 'selected' : ''}>🟠 In Review</option>
+                            <option value="closed" ${t.status === 'closed' ? 'selected' : ''}>🟢 Closed</option>
+                        </select>
+                        <input type="text" class="reply-input" id="reply-${id}" placeholder="Type reply here...">
+                        <button class="btn-save" onclick="sendReply('${id}')">Reply</button>
+                        <button class="btn-delete" onclick="deleteTicket('${id}')" title="Delete Ticket">🗑️</button>
+                    </div>
+                </div>`;
+            }).join("");
+            
+            document.querySelectorAll('.chat-box').forEach(box => {
+                box.scrollTop = box.scrollHeight;
+            });
+        });
+    }
+
+    // --- Actions ---
+    window.sendReply = async (id) => {
+        const newStatus = document.getElementById(`status-${id}`).value;
+        const replyText = document.getElementById(`reply-${id}`).value;
+        
+        const ticketRef = doc(db, "tickets", id);
+        
+        try {
+            const updates = {
+                status: newStatus,
+                lastUpdated: Date.now()
+            };
+
+            if (replyText.trim() !== "") {
+                updates.messages = arrayUnion({
+                    sender: 'admin',
+                    message: replyText,
+                    timestamp: Date.now()
+                });
+            }
+
+            await updateDoc(ticketRef, updates);
+            document.getElementById(`reply-${id}`).value = "";
+        } catch (error) {
+            alert("Error updating: " + error.message);
+        }
+    };
+
+    // ADDED: Delete Action
+    window.deleteTicket = async (id) => {
+        if(!confirm("Are you sure you want to permanently delete this ticket? This cannot be undone.")) {
+            return;
+        }
+
+        try {
+            await deleteDoc(doc(db, "tickets", id));
+            // No need to manually remove HTML, onSnapshot will refresh the list automatically
+        } catch (error) {
+            console.error(error);
+            alert("Error deleting: " + error.message);
+        }
+    };
+
+    window.openImage = (base64) => {
+        document.getElementById('modalImg').src = base64;
+        document.getElementById('imgModal').style.display = 'flex';
+    };
+</script>
+</body>
+</html>

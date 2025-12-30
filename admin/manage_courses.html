@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Foodpreneur Business Academy</title>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #6a11cb, #2575fc);
+      margin: 0;
+      padding: 20px;
+      color: #fff;
+    }
+    .dashboard {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card:hover {
+      transform: scale(1.03);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+    }
+    .card h3 {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+    .card button {
+      background: #2575fc;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      color: #fff;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    .card button:hover {
+      background: #6a11cb;
+    }
+    @media (min-width: 600px) {
+      .dashboard {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+      }
+      .card {
+        flex: 1 1 calc(50% - 20px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Course Management Dashboard</h1>
+  <div class="dashboard">
+    <div class="card">
+      <h3>Food Business Management Course</h3>
+      <button onclick="location.href='fbm_course'">Go to Course</button>
+    </div>
+    <div class="card">
+      <h3>Financial Management for Food Processors</h3>
+      <button onclick="location.href='fmfp_course.html'">Go to Course</button>
+    </div>
+    <div class="card">
+      <h3>Food Value Addition Course for Farmers</h3>
+      <button onclick="location.href='fbacf_course.html'">Go to Course</button>
+    </div>
+    <div class="card">
+      <h3>New Product Development and Management</h3>
+      <button onclick="location.href='npdm_course'">Go to Course</button>
+    </div>
+    <div class="card">
+      <h3>Management</h3>
+      <button onclick="location.href='management_course.html'">Go to Course</button>
+    </div>
+  </div>
+</body>
+</html>

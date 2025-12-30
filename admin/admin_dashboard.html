@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard | Food Business Academy</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <style>
+    :root {
+      --blue: #2563eb;
+      --purple: #6d28d9;
+      --bg: #f5f7ff;
+      --card: #ffffff;
+      --text: #1f2937;
+    }
+
+    * { box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); }
+    .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+    .sidebar { background: linear-gradient(180deg, var(--blue), var(--purple)); color: #fff; padding: 25px; }
+    .sidebar h2 { margin-bottom: 20px; }
+    .sidebar a { display: flex; gap: 12px; align-items: center; color: #e5e7eb; text-decoration: none; padding: 12px; border-radius: 12px; margin-bottom: 8px; }
+    .sidebar a:hover { background: rgba(255,255,255,.2); transform: translateX(6px); }
+    .sidebar .logout { background: #ef4444; color: #fff; }
+    .main { padding: 28px; }
+    .top-header { display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, var(--blue), var(--purple)); color: #fff; padding: 20px 24px; border-radius: 20px; }
+    .badge { background: rgba(255,255,255,.2); padding: 6px 14px; border-radius: 999px; font-size: 14px; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 18px; margin-top: 26px; }
+    .stat-card { padding: 22px; background: rgba(255,255,255,.7); backdrop-filter: blur(14px); border-radius: 22px; box-shadow: 0 25px 45px rgba(0,0,0,.12); }
+    .stat-card i { font-size: 28px; color: var(--purple); }
+    .stat-value { font-size: 32px; font-weight: 700; }
+    .stat-title { opacity: .7; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+
+<body>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <h2>FBA Admin Portal</h2>
+    <a href="index.html"><i class="fa fa-home"></i> Dashboard</a>
+    <a href="manage_courses.html"><i class="fa fa-book"></i> Manage Courses</a>
+    <a href="manage_users.html"><i class="fa fa-users"></i> Manage Users</a>
+    <a href="admin-payments.html"><i class="fa fa-credit-card"></i> Manage Payments</a>
+    <a href="manage_tickets.html"><i class="fa fa-question-circle"></i> Manage Tickets</a>
+    <a href="admin_profile.html"><i class="fa fa-user-circle"></i> Admin Profile</a>
+    <a href="#" class="logout" onclick="logout()"><i class="fa fa-sign-out-alt"></i> Logout</a>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="top-header">
+      <div>
+        <h1>Welcome, Admin</h1>
+        <div class="badge">Admin ID: <span id="adminId">...</span></div>
+      </div>
+    </div>
+
+    <section class="stats">
+      <div class="stat-card">
+        <i class="fa fa-users"></i>
+        <div class="stat-value" id="totalStudents">0</div>
+        <div class="stat-title">Total Students</div>
+      </div>
+
+      <div class="stat-card">
+        <i class="fa fa-book"></i>
+        <div class="stat-value" id="totalCourses">0</div>
+        <div class="stat-title">Total Courses</div>
+      </div>
+
+      <div class="stat-card">
+        <i class="fa fa-certificate"></i>
+        <div class="stat-value" id="totalCertificates">0</div>
+        <div class="stat-title">Total Certificates</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* 🔥 FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+  authDomain: "students-login-29409.firebaseapp.com",
+  projectId: "students-login-29409"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/* 🔐 ADMIN AUTH GUARD */
+auth.onAuthStateChanged(async (user) => {
+  if (!user) {
+    window.location.replace("../index.html");
+    return;
+  }
+
+  try {
+    const adminRef = db.collection("admins").doc(user.uid);
+    const adminSnap = await adminRef.get();
+
+    if (!adminSnap.exists) {
+      throw new Error("Admin record not found");
+    }
+
+    document.getElementById("adminId").textContent = user.uid.slice(0, 8);
+
+    loadStats();
+
+  } catch (error) {
+    console.error("Admin access error:", error);
+    alert("Access denied. Admins only.");
+    await auth.signOut();
+    window.location.replace("../index.html");
+  }
+});
+
+/* 📊 REAL-TIME STATS */
+function loadStats() {
+
+  // STUDENTS
+  db.collection("students").onSnapshot(
+    (snapshot) => {
+      document.getElementById("totalStudents").textContent = snapshot.size;
+    },
+    (error) => {
+      console.error("Students read error:", error);
+    }
+  );
+
+  // COURSES
+  db.collection("courses").onSnapshot(
+    (snapshot) => {
+      document.getElementById("totalCourses").textContent = snapshot.size;
+    },
+    (error) => {
+      console.error("Courses read error:", error);
+    }
+  );
+
+  // CERTIFICATES
+  db.collection("certificates").onSnapshot(
+    (snapshot) => {
+      document.getElementById("totalCertificates").textContent = snapshot.size;
+    },
+    (error) => {
+      console.error("Certificates read error:", error);
+    }
+  );
+}
+
+/* 🚪 LOGOUT */
+function logout() {
+  auth.signOut().then(() => {
+    window.location.replace("../index.html");
+  });
+}
+</script>

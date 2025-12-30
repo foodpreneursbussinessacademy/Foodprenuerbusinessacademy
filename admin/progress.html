@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Learning Progress | Food Business Academy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body{
+  margin:0;
+  font-family:'Poppins',sans-serif;
+  background:#f4f6fb;
+  color:#1f2937;
+}
+
+.container{
+  max-width:1100px;
+  margin:auto;
+  padding:40px 20px;
+}
+
+h1{
+  margin-bottom:10px;
+}
+
+.subtitle{
+  color:#6b7280;
+  margin-bottom:30px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:20px;
+}
+
+.card{
+  background:#fff;
+  border-radius:18px;
+  padding:22px;
+  box-shadow:0 20px 40px rgba(0,0,0,.08);
+}
+
+.course-title{
+  font-weight:700;
+  font-size:18px;
+  margin-bottom:6px;
+}
+
+.progress-bar{
+  height:12px;
+  background:#e5e7eb;
+  border-radius:20px;
+  overflow:hidden;
+  margin:12px 0;
+}
+
+.progress-bar span{
+  display:block;
+  height:100%;
+  background:linear-gradient(135deg,#2563eb,#6d28d9);
+  transition:width .3s ease;
+}
+
+.status{
+  font-size:14px;
+  margin-bottom:10px;
+}
+
+.btn{
+  display:inline-block;
+  padding:10px 16px;
+  border-radius:12px;
+  background:linear-gradient(135deg,#2563eb,#6d28d9);
+  color:#fff;
+  font-weight:600;
+  text-decoration:none;
+}
+
+.center-message{
+  text-align:center;
+  background:#fff;
+  padding:50px 30px;
+  border-radius:18px;
+  box-shadow:0 20px 40px rgba(0,0,0,.08);
+}
+
+.center-message h2{
+  margin-bottom:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>📊 Learning Progress</h1>
+  <p class="subtitle">Track your progress across all enrolled courses</p>
+
+  <!-- STATUS MESSAGE -->
+  <div id="statusBox" class="center-message" style="display:none">
+    <h2 id="statusTitle"></h2>
+    <p id="statusText"></p>
+    <br>
+    <a href="courses.html" class="btn">Browse Courses</a>
+  </div>
+
+  <!-- PROGRESS GRID -->
+  <div id="progressGrid" class="grid"></div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+  authDomain:"students-login-29409.firebaseapp.com",
+  projectId:"students-login-29409"
+});
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const grid = document.getElementById("progressGrid");
+const statusBox = document.getElementById("statusBox");
+const statusTitle = document.getElementById("statusTitle");
+const statusText = document.getElementById("statusText");
+
+function showStatus(title,text){
+  statusTitle.innerText = title;
+  statusText.innerText = text;
+  statusBox.style.display = "block";
+  grid.style.display = "none";
+}
+
+auth.onAuthStateChanged(async user=>{
+  if(!user){
+    showStatus("Login Required","Please log in to view your learning progress.");
+    return;
+  }
+
+  const snap = await db.collection("students").doc(user.uid).get();
+
+  if(!snap.exists){
+    showStatus("No Enrollments","You are not enrolled in any courses yet.");
+    return;
+  }
+
+  const enrolled = snap.data().enrolledCourses || {};
+  const courses = Object.keys(enrolled);
+
+  if(courses.length === 0){
+    showStatus("No Courses Yet","You are not enrolled in any courses yet.");
+    return;
+  }
+
+  const started = courses.some(c =>
+    enrolled[c].completedModules &&
+    enrolled[c].completedModules.length > 0
+  );
+
+  if(!started){
+    showStatus(
+      "Not Started Yet",
+      "You are enrolled, but you haven’t started learning yet."
+    );
+    return;
+  }
+
+  // ✅ RENDER PROGRESS
+  grid.innerHTML = "";
+  courses.forEach(name=>{
+    const c = enrolled[name];
+    const progress = c.progress || 0;
+    const status =
+      progress === 100 && c.quizPassed
+        ? "Completed ✅"
+        : progress > 0
+        ? "In Progress"
+        : "Not Started";
+
+    grid.innerHTML += `
+      <div class="card">
+        <div class="course-title">${name}</div>
+        <div class="status">${status}</div>
+        <div class="progress-bar">
+          <span style="width:${progress}%"></span>
+        </div>
+        <small>${progress}% completed</small><br><br>
+        <a href="dashboard.html" class="btn">Continue</a>
+      </div>
+    `;
+  });
+});
+</script>
+
+</body>
+</html>

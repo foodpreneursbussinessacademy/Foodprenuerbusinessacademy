@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Manage Students | Food Business Academy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+/* --- Main Layout --- */
+body{ margin:0; background:linear-gradient(135deg,#eef2ff,#f5f7ff); font-family:'Poppins',sans-serif; }
+.container{ max-width:1200px; margin:20px auto; padding:16px; }
+
+/* --- Header --- */
+.header{ display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:20px; }
+.search{ padding:10px 14px; border-radius:14px; border:1px solid #e5e7eb; min-width:260px; }
+
+/* --- Student Grid --- */
+.grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:18px; }
+.card{ background:#ffffffcc; backdrop-filter:blur(14px); border-radius:22px; padding:18px; box-shadow:0 20px 40px rgba(0,0,0,.08); transition:.3s; }
+.card:hover{transform:translateY(-6px)}
+
+.avatar{ width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,#2563eb,#6d28d9); display:flex; align-items:center; justify-content:center; color:#fff; font-size:22px; font-weight:700; }
+.name{ font-size:18px; font-weight:600; margin-top:12px; }
+.email{ font-size:14px; opacity:.7; word-break:break-all; }
+
+.actions{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-top:16px; }
+
+button{ border:none; padding:10px; border-radius:12px; cursor:pointer; font-weight:600; font-size:13px; transition: 0.2s; }
+button:hover { filter: brightness(0.95); }
+
+.progress-btn{ background:#e0e7ff; color: #3730a3; }
+.assign{ background:#dbeafe; color: #1e40af; }
+.reset{ background:linear-gradient(135deg,#2563eb,#22c55e); color:#fff; }
+.delete{ background:#ef4444; color:#fff; }
+
+.empty{ grid-column:1/-1; text-align:center; padding:40px; opacity:.6; }
+
+/* --- MODAL STYLES (New) --- */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+    z-index: 1000; display: none; align-items: center; justify-content: center;
+}
+.modal-content {
+    background: #fff; width: 90%; max-width: 500px;
+    border-radius: 24px; padding: 25px;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+    max-height: 85vh; overflow-y: auto;
+    position: relative;
+    animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+.modal-header h2 { margin: 0; font-size: 1.2rem; }
+.btn-close { background: #f3f4f6; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; }
+
+/* Progress Card inside Modal */
+.p-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 15px; margin-bottom: 12px; }
+.p-header { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; font-weight: 600; }
+.p-track { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+.p-fill { height: 100%; background: #6366f1; transition: width 0.5s ease; }
+.p-fill.complete { background: #10b981; } /* Green when done */
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>Manage Students</h1>
+    <input id="searchInput" class="search" placeholder="Search students..." oninput="renderStudents()">
+  </div>
+
+  <div id="studentsGrid" class="grid">
+    <div class="empty">Loading students…</div>
+  </div>
+</div>
+
+<div id="progressModal" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Student Progress</h2>
+            <div class="btn-close" onclick="closeModal(true)">&times;</div>
+        </div>
+        <div id="modalBody">
+            </div>
+    </div>
+</div>
+
+<script>
+/* 🔥 FIREBASE INIT */
+firebase.initializeApp({
+  apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+  authDomain: "students-login-29409.firebaseapp.com",
+  projectId: "students-login-29409"
+});
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+let students = [];
+
+// Cache for course "Total Published Modules" count
+let courseStatsCache = {}; 
+const courseIds = [
+    "financial_management_for_food_processors",
+    "food_business_management_course",
+    "food_value_addition_course_for_farmers",
+    "management_course",
+    "new_product_development_and_management_course"
+];
+
+/* 🔐 ADMIN GUARD */
+auth.onAuthStateChanged(async user=>{
+  if(!user){ location.replace("../index.html"); return; }
+
+  const adminSnap = await db.collection("admins").doc(user.uid).get();
+  if(!adminSnap.exists){
+    alert("Admins only");
+    auth.signOut();
+    location.replace("../index.html");
+    return;
+  }
+
+  // Admin confirmed: Load students AND Pre-load Course Data
+  loadCourseStats(); 
+  loadStudents();
+});
+
+/* 📊 1. PRE-LOAD COURSE STATS (Counts Published Modules) */
+async function loadCourseStats() {
+    for (const cid of courseIds) {
+        try {
+            const snap = await db.collection('courses').doc(cid).collection('modules')
+                .where('status', '==', 'published').get();
+            
+            // Get title (formatted)
+            let title = cid.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            
+            courseStatsCache[cid] = {
+                title: title,
+                total: snap.size, // Number of published modules
+                moduleIds: snap.docs.map(d => d.id) // Save IDs to verify completion
+            };
+        } catch (e) {
+            console.error("Error loading stats for", cid, e);
+        }
+    }
+}
+
+/* 📥 2. LOAD STUDENTS */
+async function loadStudents(){
+  const snap = await db.collection("students").get();
+  students = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  renderStudents();
+}
+
+/* 🎨 3. RENDER + SEARCH */
+function renderStudents(){
+  const grid = document.getElementById("studentsGrid");
+  const q = document.getElementById("searchInput").value.toLowerCase();
+
+  const filtered = students.filter(s=>{
+    return (s.fullName||"").toLowerCase().includes(q) ||
+           (s.email||"").toLowerCase().includes(q);
+  });
+
+  if(!filtered.length){
+    grid.innerHTML = '<div class="empty">No students found</div>';
+    return;
+  }
+
+  grid.innerHTML = "";
+
+  filtered.forEach(s=>{
+    const name = s.fullName || s.displayName || "Unnamed Student";
+    const email = s.email || "—";
+    const initials = name.charAt(0).toUpperCase();
+
+    grid.innerHTML += `
+      <div class="card">
+        <div class="avatar">${initials}</div>
+        <div class="name">${name}</div>
+        <div class="email">${email}</div>
+
+        <div class="actions">
+          <button class="progress-btn" onclick="openProgress('${s.id}', '${name}')">
+            Track Progress
+          </button>
+
+          <button class="assign" onclick="assignCourse('${s.id}')">
+            Assign Course
+          </button>
+
+          <button class="reset" onclick="resetPassword('${email}')">
+            Reset Password
+          </button>
+
+          <button class="delete" onclick="deleteStudent('${s.id}')">
+            Delete
+          </button>
+        </div>
+      </div>
+    `;
+  });
+}
+
+/* 📈 4. OPEN PROGRESS MODAL (Dynamic Calculation) */
+function openProgress(uid, studentName){
+    const modal = document.getElementById('progressModal');
+    const body = document.getElementById('modalBody');
+    const title = document.getElementById('modalTitle');
+
+    // 1. Find Student Data locally first (fast)
+    const student = students.find(s => s.id === uid);
+    if (!student) return alert("Student data error");
+
+    title.innerText = `${studentName}'s Progress`;
+    body.innerHTML = '<div style="text-align:center; padding:20px;">Calculating...</div>';
+    modal.style.display = 'flex'; // Show modal
+
+    // 2. Get Enrolled/Completed Data
+    const enrolled = student.enrolledCourses || {};
+    let html = "";
+
+    // 3. Loop through cached courses
+    courseIds.forEach(cid => {
+        const stats = courseStatsCache[cid] || { title: cid, total: 0, moduleIds: [] };
+        const userCourseData = enrolled[cid] || {};
+        const userCompletedMap = userCourseData.completedModules || {};
+
+        // Calculate valid completions (intersection of Published & User Completed)
+        let completedCount = 0;
+        stats.moduleIds.forEach(modId => {
+            if (userCompletedMap[modId] === true) completedCount++;
+        });
+
+        let percent = stats.total > 0 ? Math.round((completedCount / stats.total) * 100) : 0;
+        if(percent > 100) percent = 100;
+
+        const isComplete = percent === 100;
+        const barClass = isComplete ? "p-fill complete" : "p-fill";
+
+        html += `
+            <div class="p-card">
+                <div class="p-header">
+                    <span>${stats.title}</span>
+                    <span>${percent}%</span>
+                </div>
+                <div class="p-track">
+                    <div class="${barClass}" style="width: ${percent}%"></div>
+                </div>
+                <div style="font-size:12px; color:#6b7280; margin-top:5px; text-align:right;">
+                    ${completedCount} / ${stats.total} Modules
+                </div>
+            </div>
+        `;
+    });
+
+    body.innerHTML = html;
+}
+
+function closeModal(force){
+    if(force || event.target.id === 'progressModal'){
+        document.getElementById('progressModal').style.display = 'none';
+    }
+}
+
+/* ➕ ASSIGN COURSE (Original Logic) */
+async function assignCourse(uid){
+  const course = prompt("Enter course name");
+  if(!course) return;
+
+  const ref = db.collection("students").doc(uid);
+  const snap = await ref.get();
+  const courses = snap.data().coursesPaid || [];
+
+  if(courses.includes(course)){
+    alert("Course already assigned");
+    return;
+  }
+
+  await ref.update({
+    coursesPaid: [...courses, course],
+    [`progress.${course}`]: 0
+  });
+
+  alert("Course assigned");
+  loadStudents();
+}
+
+/* 🔐 RESET PASSWORD */
+function resetPassword(email){
+  if(!email) return alert("No email found");
+  auth.sendPasswordResetEmail(email)
+    .then(()=>alert("Password reset email sent"))
+    .catch(e=>alert(e.message));
+}
+
+/* ❌ DELETE STUDENT */
+async function deleteStudent(uid){
+  if(!confirm("⚠️ This will permanently delete the student. Are you sure?")) return;
+  try{
+    await db.collection("students").doc(uid).delete();
+    // Assuming backend endpoint exists, otherwise just firestore delete
+    alert("Student deleted");
+    loadStudents();
+  }catch(e){
+    alert("Delete failed: " + e.message);
+  }
+}
+</script>
+
+</body>
+</html>
