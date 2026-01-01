@@ -223,11 +223,12 @@
         <div id="loading">Loading Assessments...</div>
     </div>
 
-    <script type="module">
+    <                    <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
         import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
-        // --- 1. CONFIGURATION (Same as your widget) ---
+        // --- CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
             authDomain: "students-login-29409.firebaseapp.com",
@@ -240,50 +241,91 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
         const container = document.getElementById("cards-container");
+        const loadingDiv = document.getElementById("loading");
 
-        // --- 2. FETCH DATA ---
-        // We use onSnapshot for real-time updates. 
-        // We try to order by 'submittedAt' descending (Newest first).
-        // Note: If this fails due to missing index, it will log a link in console to create it.
-        
-        const q = query(collection(db, "student_assessments"), orderBy("submittedAt", "desc"));
-
-        onSnapshot(q, (snapshot) => {
-            container.innerHTML = ""; // Clear loading/old data
-
-            if (snapshot.empty) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div style="font-size:40px; margin-bottom:10px;">📭</div>
-                        No assessments received yet.
-                    </div>`;
-                return;
+        // --- CHECK LOGIN STATUS FIRST ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // User is logged in, load data
+                loadingDiv.innerText = "Verifying Admin Permissions...";
+                loadInbox();
+            } else {
+                // User is NOT logged in
+                loadingDiv.innerHTML = `
+                    <div style="color: red; padding: 20px;">
+                        <h3>⚠️ Access Denied</h3>
+                        <p>You are not logged in.</p>
+                        <p>Because your Security Rules require <code>isAdmin()</code>, you must sign in first.</p>
+                        <a href="/index.html" style="background:#1565c0; color:white; padding:10px 20px; text-decoration:none; border-radius:5px;">Go to Login Page</a>
+                    </div>
+                `;
             }
-
-            snapshot.forEach((doc) => {
-                const data = doc.data();
-                const card = createCard(doc.id, data);
-                container.appendChild(card);
-            });
-        }, (error) => {
-            console.error("Error fetching data: ", error);
-            container.innerHTML = `<div style="text-align:center; padding:20px; color:red;">Error loading data.<br>Check console for details.</div>`;
         });
 
-        // --- 3. HELPER FUNCTIONS ---
+        function loadInbox() {
+            // We use 'try/catch' logic inside the snapshot to handle Index errors
+            const q = query(collection(db, "student_assessments"), orderBy("submittedAt", "desc"));
 
-        // Format Date
+            onSnapshot(q, (snapshot) => {
+                container.innerHTML = ""; // Clear loading
+
+                if (snapshot.empty) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div style="font-size:40px; margin-bottom:10px;">📭</div>
+                            No assessments received yet.
+                        </div>`;
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const card = createCard(doc.id, data);
+                    container.appendChild(card);
+                });
+            }, (error) => {
+                console.error("Full Error:", error);
+                
+                // DETECT INDEX ERROR
+                if (error.message.includes("indexes")) {
+                    loadingDiv.innerHTML = `
+                        <div style="color: #d32f2f; padding: 20px; text-align: left;">
+                            <h3>⚠️ Missing Index</h3>
+                            <p>Firestore needs an index to sort by Date.</p>
+                            <p><strong>Open this link to fix it automatically:</strong></p>
+                            <p><a href="${error.message.match(/https:\/\/[^\s]+/)[0]}" target="_blank" style="word-break: break-all;">Click Here to Create Index</a></p>
+                            <p><small>(Wait 2 minutes after creating it, then refresh)</small></p>
+                        </div>
+                    `;
+                } 
+                // DETECT PERMISSION ERROR
+                else if (error.code === "permission-denied") {
+                    loadingDiv.innerHTML = `
+                        <div style="color: #d32f2f; padding: 20px;">
+                            <h3>⚠️ Permission Denied</h3>
+                            <p>You are logged in, but your User ID is not in the 'admins' collection.</p>
+                            <p><strong>Your UID:</strong> ${auth.currentUser.uid}</p>
+                            <p>Add this UID as a Document ID in the 'admins' collection in Firestore.</p>
+                        </div>
+                    `;
+                }
+                else {
+                    loadingDiv.innerText = "Error: " + error.message;
+                }
+            });
+        }
+
+        // --- HELPER FUNCTIONS ---
         function formatTime(timestamp) {
             if (!timestamp) return "Just now";
             const date = timestamp.toDate();
-            // Short format: "Jan 1, 14:30"
             return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + 
                    ", " + 
                    date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
         }
 
-        // Determine Tag Color based on stage
         function getStageClass(stage) {
             if(!stage) return "";
             if(stage.includes("Idea")) return "status-idea";
@@ -291,15 +333,11 @@
             return "status-new";
         }
 
-        // --- 4. CREATE CARD HTML ---
         function createCard(id, data) {
             const div = document.createElement("div");
-            
-            // Assign Border Color Class
             const stageClass = getStageClass(data.stage);
             div.className = `submission-card ${stageClass}`;
             
-            // Extract Key Info
             const name = data.name || "Anonymous";
             const email = data.email || "";
             const crops = data.crops || "Unknown Crops";
@@ -312,20 +350,16 @@
                     <div class="student-name">${name}</div>
                     <div class="timestamp">${time}</div>
                 </div>
-                
                 <div class="card-summary">
                     <span class="tag tag-stage">${stage}</span>
                     <span class="tag tag-crop">${crops}</span>
                 </div>
-                
                 <div style="font-size:13px; color:#555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                     Goal: ${goal}
                 </div>
-                
                 <div style="text-align:center; margin-top:10px;">
                      <div class="toggle-icon">⌄</div>
                 </div>
-
                 <div class="details-panel">
                     ${renderDetail("Email", email)}
                     ${renderDetail("Crops", crops)}
@@ -336,31 +370,17 @@
                     ${renderDetail("Financial Records", data.finance)}
                     ${renderDetail("Market Channel", data.market)}
                     ${renderDetail("Primary Goal", goal)}
-                    
                     <div class="action-row">
                         <a href="mailto:${email}?subject=FPBA%20Course%20Recommendation" class="btn-email">Reply via Email</a>
                     </div>
                 </div>
             `;
-
-            // Add Click Event to Toggle
-            div.addEventListener("click", function() {
-                this.classList.toggle("expanded");
-            });
-
+            div.addEventListener("click", function() { this.classList.toggle("expanded"); });
             return div;
         }
 
         function renderDetail(label, value) {
             if(!value) return "";
-            return `
-                <div class="qa-pair">
-                    <div class="question-label">${label}</div>
-                    <div class="answer-text">${value}</div>
-                </div>
-            `;
+            return `<div class="qa-pair"><div class="question-label">${label}</div><div class="answer-text">${value}</div></div>`;
         }
-
     </script>
-</body>
-</html>
