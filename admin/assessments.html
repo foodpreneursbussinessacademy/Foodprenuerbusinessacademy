@@ -3,261 +3,231 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FPBA Admin | Student Assessments</title>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <title>FPBA Admin Inbox</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
     
     <style>
-        /* --- THEME VARIABLES (Same as User Widget) --- */
+        /* --- THEME VARIABLES (MATCHING YOUR WIDGET) --- */
         :root {
             --fp-purple: #6a1b9a;
             --fp-blue: #1565c0;
             --fp-lavender: #e1bee7;
             --fp-red: #d32f2f;
-            --fp-yellow: #ffeb3b;
-            --bg-light: #f4f7f6;
+            --fp-yellow: #fbc02d;
+            --fp-bg-grey: #f4f6f8;
             --text-dark: #2c3e50;
-            --text-light: #8898aa;
-            --white: #ffffff;
+            --text-grey: #607d8b;
         }
 
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
         body {
             font-family: 'Open Sans', sans-serif;
-            background-color: var(--bg-light);
+            background-color: var(--fp-bg-grey);
             margin: 0;
             padding: 0;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden; /* Prevent full page scroll, handle inside containers */
+            color: var(--text-dark);
         }
 
         /* --- HEADER --- */
         header {
-            background: linear-gradient(to right, var(--fp-purple), var(--fp-blue));
+            background: linear-gradient(135deg, var(--fp-purple), var(--fp-blue));
             color: white;
-            padding: 0 30px;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
+            padding: 20px 20px 60px 20px; /* Extra bottom padding for overlap effect */
+            position: sticky;
+            top: 0;
+            z-index: 100;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            z-index: 10;
         }
 
         h1 {
             font-family: 'Montserrat', sans-serif;
-            font-weight: 800;
-            font-size: 20px;
+            font-weight: 700;
+            font-size: 24px;
             margin: 0;
-            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .refresh-btn {
             background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.4);
+            border: none;
             color: white;
-            padding: 8px 16px;
+            padding: 8px 15px;
             border-radius: 20px;
+            font-size: 12px;
             cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s;
         }
-        .refresh-btn:hover { background: rgba(255,255,255,0.3); }
 
-        /* --- MAIN CONTAINER --- */
+        /* --- CONTAINER --- */
         .container {
-            display: flex;
-            flex: 1;
-            height: calc(100vh - 70px);
-        }
-
-        /* --- LEFT SIDEBAR (INBOX LIST) --- */
-        .sidebar {
-            width: 350px;
-            background: var(--white);
-            border-right: 1px solid #e0e0e0;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-
-        .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid #eee;
-            color: var(--text-light);
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .submission-card {
-            padding: 20px;
-            border-bottom: 1px solid #f0f0f0;
-            cursor: pointer;
-            transition: background 0.2s;
+            max-width: 600px;
+            margin: -40px auto 20px auto; /* Negative top margin to pull over header */
+            padding: 0 15px;
             position: relative;
+            z-index: 101;
         }
 
-        .submission-card:hover { background-color: #fafafa; }
-        
-        .submission-card.active {
-            background-color: #f3e5f5; /* Light purple tint */
-            border-left: 4px solid var(--fp-purple);
-        }
-
-        .card-name {
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 700;
-            color: var(--text-dark);
-            font-size: 16px;
-            margin-bottom: 5px;
-        }
-
-        .card-email {
-            font-size: 13px;
-            color: var(--text-light);
-            margin-bottom: 8px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .card-meta {
-            font-size: 11px;
-            color: var(--fp-blue);
-            font-weight: 600;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        /* --- RIGHT CONTENT (READING PANE) --- */
-        .content-area {
-            flex: 1;
-            padding: 40px;
-            overflow-y: auto;
-            background-image: radial-gradient(#e1bee7 1px, transparent 1px);
-            background-size: 20px 20px; /* Subtle dot pattern */
-        }
-
-        /* Empty State */
-        .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: var(--text-light);
-        }
-
-        /* Detail View Styles */
-        .profile-header {
+        /* --- INBOX CARDS --- */
+        .submission-card {
             background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-top: 5px solid var(--fp-blue);
-        }
-
-        .profile-title h2 {
-            margin: 0 0 5px 0;
-            color: var(--fp-purple);
-            font-family: 'Montserrat', sans-serif;
-        }
-        .profile-title span { font-size: 14px; color: #666; }
-
-        .action-btn {
-            background: var(--fp-purple);
-            color: white;
-            text-decoration: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: transform 0.2s;
-        }
-        .action-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(106, 27, 154, 0.3); }
-
-        .answers-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-        }
-
-        .answer-card {
-            background: white;
+            border-radius: 16px;
             padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-            border: 1px solid #fff;
-            transition: all 0.3s;
-        }
-        
-        .answer-card:hover {
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
-            border-color: var(--fp-lavender);
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border-left: 5px solid transparent;
+            position: relative;
+            overflow: hidden;
         }
 
-        .q-label {
-            font-size: 12px;
-            text-transform: uppercase;
-            color: #999;
-            font-weight: 700;
-            letter-spacing: 0.5px;
+        .submission-card:active { transform: scale(0.98); }
+        
+        /* Status Borders based on Stage (Assigned via JS) */
+        .status-new { border-left-color: var(--fp-blue); } /* 0-1 Year */
+        .status-idea { border-left-color: var(--fp-lavender); } /* Idea */
+        .status-pro { border-left-color: var(--fp-purple); } /* 3+ Years */
+
+        /* Header of the Card */
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
             margin-bottom: 8px;
         }
 
-        .a-text {
-            font-size: 16px;
+        .student-name {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 18px;
             color: var(--text-dark);
+        }
+
+        .timestamp {
+            font-size: 11px;
+            color: var(--text-grey);
+            background: #f0f0f0;
+            padding: 4px 8px;
+            border-radius: 10px;
+        }
+
+        .card-summary {
+            font-size: 14px;
+            color: var(--text-grey);
+            margin-bottom: 10px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
             font-weight: 600;
+            text-transform: uppercase;
+        }
+        .tag-crop { background: #e3f2fd; color: var(--fp-blue); }
+        .tag-stage { background: #f3e5f5; color: var(--fp-purple); }
+
+        /* --- EXPANDED DETAILS (Hidden by default) --- */
+        .details-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out;
+            border-top: 1px solid #eee;
+            margin-top: 0;
+            opacity: 0;
+        }
+
+        .submission-card.expanded .details-panel {
+            max-height: 1000px; /* Arbitrary large number */
+            margin-top: 15px;
+            padding-top: 15px;
+            opacity: 1;
+        }
+
+        .qa-pair {
+            margin-bottom: 15px;
+        }
+
+        .question-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--fp-purple);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .answer-text {
+            font-size: 15px;
+            color: #333;
             line-height: 1.5;
         }
 
-        /* Special Highlighting for important fields */
-        .highlight-card { background: linear-gradient(135deg, #fff, #fefeff); border-left: 4px solid var(--fp-yellow); }
-        .alert-card { border-left: 4px solid var(--fp-red); } /* For Waste/Losses */
+        .action-row {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .btn-email {
+            background: var(--fp-blue);
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        /* Loading State */
+        #loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-grey);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: #999;
+        }
+
+        /* Toggle Icon */
+        .toggle-icon {
+            font-size: 20px;
+            color: #ccc;
+            transition: transform 0.3s;
+        }
+        .submission-card.expanded .toggle-icon {
+            transform: rotate(180deg);
+        }
+
     </style>
 </head>
 <body>
 
     <header>
-        <div style="display:flex; align-items:center; gap:10px;">
-            <div style="font-size:24px;">🥑</div>
-            <h1>FPBA Admin Dashboard</h1>
-        </div>
-        <button onclick="location.reload()" class="refresh-btn">⟳ Refresh Data</button>
+        <h1>
+            FPBA Inbox
+            <button class="refresh-btn" onclick="location.reload()">Refresh</button>
+        </h1>
+        <p style="margin: 5px 0 0; font-size: 13px; opacity: 0.9;">Real-time student assessments</p>
     </header>
 
-    <div class="container">
-        <div class="sidebar" id="submission-list">
-            <div class="sidebar-header">Recent Applications</div>
-            <div style="padding:20px; text-align:center; color:#999;" id="loading-msg">Loading...</div>
-            </div>
-
-        <div class="content-area" id="detail-view">
-            <div class="empty-state">
-                <div style="font-size:60px; margin-bottom:20px; opacity:0.3;">📂</div>
-                <h3>Select an application to view details</h3>
-                <p>New submissions appear in the left sidebar.</p>
-            </div>
-        </div>
+    <div class="container" id="cards-container">
+        <div id="loading">Loading Assessments...</div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+        import { getFirestore, collection, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-        // 1. CONFIGURATION (Same as user side)
+        // --- 1. CONFIGURATION (Same as your widget) ---
         const firebaseConfig = {
             apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
             authDomain: "students-login-29409.firebaseapp.com",
@@ -270,157 +240,126 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const container = document.getElementById("cards-container");
 
-        // 2. DOM ELEMENTS
-        const listContainer = document.getElementById("submission-list");
-        const detailContainer = document.getElementById("detail-view");
+        // --- 2. FETCH DATA ---
+        // We use onSnapshot for real-time updates. 
+        // We try to order by 'submittedAt' descending (Newest first).
+        // Note: If this fails due to missing index, it will log a link in console to create it.
         
-        // 3. DATA LABEL MAPPING
-        // Converts code IDs to readable English for the admin
-        const labelMap = {
-            name: "Applicant Name",
-            email: "Email Address",
-            crops: "Crops Grown",
-            waste: "Experiencing Losses?",
-            processing: "Current Processing Level",
-            interest: "Interest in Value Addition",
-            stage: "Business Maturity",
-            finance: "Financial Record Keeping",
-            market: "Primary Market Channel",
-            goal: "Primary Goal for Year"
-        };
+        const q = query(collection(db, "student_assessments"), orderBy("submittedAt", "desc"));
 
-        // 4. FETCH DATA
-        async function fetchSubmissions() {
-            try {
-                // Query: collection 'student_assessments', ordered by time descending
-                const q = query(collection(db, "student_assessments"), orderBy("submittedAt", "desc"));
-                const querySnapshot = await getDocs(q);
-                
-                // Clear loading
-                const loadingMsg = document.getElementById("loading-msg");
-                if(loadingMsg) loadingMsg.remove();
+        onSnapshot(q, (snapshot) => {
+            container.innerHTML = ""; // Clear loading/old data
 
-                if(querySnapshot.empty) {
-                    listContainer.innerHTML += `<div style="padding:20px; text-align:center;">No submissions found.</div>`;
-                    return;
-                }
-
-                // Loop through docs
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    createSidebarItem(data, doc.id);
-                });
-
-            } catch (error) {
-                console.error("Error fetching docs: ", error);
-                listContainer.innerHTML = `<div style="padding:20px; color:red;">Error loading data. Check console.</div>`;
+            if (snapshot.empty) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size:40px; margin-bottom:10px;">📭</div>
+                        No assessments received yet.
+                    </div>`;
+                return;
             }
+
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const card = createCard(doc.id, data);
+                container.appendChild(card);
+            });
+        }, (error) => {
+            console.error("Error fetching data: ", error);
+            container.innerHTML = `<div style="text-align:center; padding:20px; color:red;">Error loading data.<br>Check console for details.</div>`;
+        });
+
+        // --- 3. HELPER FUNCTIONS ---
+
+        // Format Date
+        function formatTime(timestamp) {
+            if (!timestamp) return "Just now";
+            const date = timestamp.toDate();
+            // Short format: "Jan 1, 14:30"
+            return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + 
+                   ", " + 
+                   date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
         }
 
-        // 5. RENDER SIDEBAR ITEM
-        function createSidebarItem(data, docId) {
+        // Determine Tag Color based on stage
+        function getStageClass(stage) {
+            if(!stage) return "";
+            if(stage.includes("Idea")) return "status-idea";
+            if(stage.includes("3+")) return "status-pro";
+            return "status-new";
+        }
+
+        // --- 4. CREATE CARD HTML ---
+        function createCard(id, data) {
             const div = document.createElement("div");
-            div.className = "submission-card";
-            div.id = `card-${docId}`;
             
-            // Format Date (Handle Firebase Timestamp or fallback)
-            let dateStr = "Just now";
-            if(data.submittedAt && data.submittedAt.seconds) {
-                dateStr = new Date(data.submittedAt.seconds * 1000).toLocaleDateString("en-GB", {
-                    day: 'numeric', month: 'short'
-                });
-            }
+            // Assign Border Color Class
+            const stageClass = getStageClass(data.stage);
+            div.className = `submission-card ${stageClass}`;
+            
+            // Extract Key Info
+            const name = data.name || "Anonymous";
+            const email = data.email || "";
+            const crops = data.crops || "Unknown Crops";
+            const goal = data.goal || "No goal stated";
+            const time = formatTime(data.submittedAt);
+            const stage = data.stage || "Unknown Stage";
 
             div.innerHTML = `
-                <div class="card-name">${data.name || 'Unknown Name'}</div>
-                <div class="card-email">${data.email || 'No Email'}</div>
-                <div class="card-meta">
-                    <span>${data.crops ? data.crops.substring(0, 20) + '...' : 'Farmer'}</span>
-                    <span>${dateStr}</span>
+                <div class="card-header">
+                    <div class="student-name">${name}</div>
+                    <div class="timestamp">${time}</div>
+                </div>
+                
+                <div class="card-summary">
+                    <span class="tag tag-stage">${stage}</span>
+                    <span class="tag tag-crop">${crops}</span>
+                </div>
+                
+                <div style="font-size:13px; color:#555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    Goal: ${goal}
+                </div>
+                
+                <div style="text-align:center; margin-top:10px;">
+                     <div class="toggle-icon">⌄</div>
+                </div>
+
+                <div class="details-panel">
+                    ${renderDetail("Email", email)}
+                    ${renderDetail("Crops", crops)}
+                    ${renderDetail("Current Losses", data.waste)}
+                    ${renderDetail("Value Addition Interest", data.interest)}
+                    ${renderDetail("Processing Status", data.processing)}
+                    ${renderDetail("Business Stage", stage)}
+                    ${renderDetail("Financial Records", data.finance)}
+                    ${renderDetail("Market Channel", data.market)}
+                    ${renderDetail("Primary Goal", goal)}
+                    
+                    <div class="action-row">
+                        <a href="mailto:${email}?subject=FPBA%20Course%20Recommendation" class="btn-email">Reply via Email</a>
+                    </div>
                 </div>
             `;
 
-            div.addEventListener("click", () => {
-                // Remove active class from all
-                document.querySelectorAll(".submission-card").forEach(c => c.classList.remove("active"));
-                // Add to current
-                div.classList.add("active");
-                // Render Details
-                renderDetailView(data);
+            // Add Click Event to Toggle
+            div.addEventListener("click", function() {
+                this.classList.toggle("expanded");
             });
 
-            listContainer.appendChild(div);
+            return div;
         }
 
-        // 6. RENDER DETAIL VIEW
-        function renderDetailView(data) {
-            // Determine styling for waste (Red alert if they have losses)
-            const wasteAlert = (data.waste && (data.waste.includes("Yes") || data.waste.includes("huge"))) ? "alert-card" : "";
-
-            const html = `
-                <div class="profile-header">
-                    <div class="profile-title">
-                        <h2>${data.name}</h2>
-                        <span>${data.email}</span>
-                    </div>
-                    <a href="mailto:${data.email}?subject=Your FPBA Course Recommendation" class="action-btn">
-                        ✉️ Send Recommendation
-                    </a>
-                </div>
-
-                <h3 style="margin-bottom:20px; color:#666;">Assessment Details</h3>
-                
-                <div class="answers-grid">
-                    <div class="answer-card highlight-card">
-                        <div class="q-label">Business Stage</div>
-                        <div class="a-text">${data.stage || '-'}</div>
-                    </div>
-
-                    <div class="answer-card">
-                        <div class="q-label">Producing</div>
-                        <div class="a-text">${data.crops || '-'}</div>
-                    </div>
-
-                    <div class="answer-card ${wasteAlert}">
-                        <div class="q-label">Post-Harvest Losses</div>
-                        <div class="a-text">${data.waste || '-'}</div>
-                    </div>
-
-                    <div class="answer-card">
-                        <div class="q-label">Current Processing</div>
-                        <div class="a-text">${data.processing || '-'}</div>
-                    </div>
-
-                    <div class="answer-card highlight-card">
-                        <div class="q-label">Interested In</div>
-                        <div class="a-text" style="color:var(--fp-purple)">${data.interest || '-'}</div>
-                    </div>
-
-                    <div class="answer-card">
-                        <div class="q-label">Financial Records</div>
-                        <div class="a-text">${data.finance || '-'}</div>
-                    </div>
-
-                    <div class="answer-card">
-                        <div class="q-label">Target Market</div>
-                        <div class="a-text">${data.market || '-'}</div>
-                    </div>
-                </div>
-
-                <div style="margin-top:30px;">
-                    <div class="answer-card" style="border-left: 4px solid var(--fp-blue); background:#fdfdfe;">
-                        <div class="q-label">Primary Goal</div>
-                        <div class="a-text" style="font-size:18px;">"${data.goal || '-'}"</div>
-                    </div>
+        function renderDetail(label, value) {
+            if(!value) return "";
+            return `
+                <div class="qa-pair">
+                    <div class="question-label">${label}</div>
+                    <div class="answer-text">${value}</div>
                 </div>
             `;
-            
-            detailContainer.innerHTML = html;
         }
-
-        // Run on Load
-        fetchSubmissions();
 
     </script>
 </body>
