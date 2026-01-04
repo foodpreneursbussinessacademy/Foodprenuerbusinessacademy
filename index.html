@@ -508,8 +508,9 @@
 
     // --- 7. DATABASE CHECK FOR DUPLICATE PAYMENT ---
     function checkEnrollmentAndRedirect(uid) {
-        // --- CHANGE TEXT HERE AS REQUESTED ---
-        document.getElementById('loginBtnText').innerText = "Fetching payment details...";
+        // --- TEXT CHANGE: Set the button text specifically here ---
+        const btnTextEl = document.getElementById('loginBtnText');
+        if(btnTextEl) btnTextEl.innerText = "Fetching payment details...";
 
         db.collection('students').doc(uid).get()
         .then((doc) => {
@@ -519,11 +520,11 @@
 
                 if (enrolledCourses.includes(courseId)) {
                     // --- ALREADY PAID ---
-                    // 1. Set success state green check
+                    // 1. Success State
                     setBtnSuccess(); 
                     
-                    // 2. SILENT REDIRECT (No Alerts, No Text)
-                    // Redirects to DASHBOARD (student.html), not courses.
+                    // 2. SILENT REDIRECT to STUDENT.HTML (Dashboard)
+                    // No text, No alerts, No delay.
                     window.location.href = 'student.html';
                 } else {
                     // --- NOT PAID (New Purchase) ---
