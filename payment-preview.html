@@ -5,7 +5,6 @@
 <title>Payment Preview - Food Business Academy</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
@@ -30,7 +29,7 @@ body {
     align-items: center; 
     min-height: 100vh; 
     padding: 20px;
-    opacity: 0; /* Hidden to prevent flash */
+    opacity: 0; /* Hidden initially to prevent flash while checking DB */
     transition: opacity 0.5s ease;
 }
 body.loaded { opacity: 1; }
@@ -124,6 +123,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     cursor: pointer;
     box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
 }
+.main-btn:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
 
 /* --- INVOICE MODAL STYLES --- */
 #invoice-modal-overlay {
@@ -200,7 +200,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     border-radius: 0 0 4px 4px;
 }
 .inv-btn { padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 14px; }
-.btn-close-inv { background: #4f46e5; color: #fff; } /* Changed to primary color as it is now "Finish" */
+.btn-close-inv { background: #4f46e5; color: #fff; } 
 .btn-close-inv:hover { background: #4338ca; }
 
 .btn-download { background: #10b981; color: #fff; display: flex; align-items: center; gap: 5px;}
@@ -246,7 +246,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     </div>
   </div>
 
-  <button type="button" class="main-btn" onclick="proceedPayment()">Generate Invoice & Pay</button>
+  <button type="button" id="payBtn" class="main-btn" onclick="proceedPayment()">Generate Invoice & Pay</button>
 </div>
 
 <div id="invoice-modal-overlay">
@@ -330,128 +330,166 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
   </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-<script>
 // --- 1. CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
   authDomain: "students-login-29409.firebaseapp.com",
   projectId: "students-login-29409"
 };
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-const db = firebase.firestore(); // INITIALIZE FIRESTORE
 
-// --- 2. GET URL DATA ---
-const urlParams = new URLSearchParams(window.location.search);
-const courseName = urlParams.get('name') || localStorage.getItem("courseName");
-const coursePrice = urlParams.get('price') || localStorage.getItem("coursePrice");
-let studentEmail = "";
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-// Show Loading Data immediately
-if(document.getElementById("displayCourse")) {
-    document.getElementById("displayCourse").textContent = courseName || "Loading...";
-    document.getElementById("displayPrice").textContent = "$" + (coursePrice || "0.00");
-}
+// Global State
+let currentInvoiceId = null;
+let currentCourseName = "";
+let currentPrice = "0.00";
+let currentUserEmail = "";
+let existingDocRef = null;
 
-// --- 3. MAIN LOGIC (CHECK IF PAID) ---
-firebase.auth().onAuthStateChanged((user) => {
-  if (user) {
-    studentEmail = user.email;
-    document.getElementById("displayEmail").textContent = studentEmail;
-
-    // Safety: If no course name, go back
-    if (!courseName || courseName === "N/A" || !coursePrice) {
-         window.location.href = "student.html";
-         return;
-    }
-
-    // CHECK FIRESTORE FOR PAYMENT STATUS
-    const docRef = db.collection("enrollments").doc(studentEmail);
-    
-    docRef.get().then((doc) => {
-        if (doc.exists) {
-            const data = doc.data();
-            // If the specific course is marked as 'active' (PAID)
-            if (data[courseName] === "active" || data[courseName] === "paid") {
-                console.log("Course already paid. Redirecting...");
-                window.location.href = "student.html";
-                return;
-            }
-        }
-        // If we are here, it means NOT paid. Show the page.
-        document.body.classList.add('loaded');
-    }).catch((error) => {
-        console.log("Error getting document:", error);
-        // If error (e.g., offline), fall back to showing the page
-        document.body.classList.add('loaded');
-    });
-
-  } else {
-    // Not logged in
-    window.location.href = "index.html";
+// --- 2. MAIN LOGIC (CHECK PAID VS UNPAID) ---
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "login.html";
+    return;
   }
+  
+  currentUserEmail = user.email;
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlInvoiceId = urlParams.get('invoiceId');
+  const urlName = urlParams.get('name');
+  const urlPrice = urlParams.get('price');
+
+  // A. IF INVOICE ID EXISTS IN URL -> CHECK FIREBASE
+  if (urlInvoiceId) {
+    try {
+      const docRef = doc(db, "payments", urlInvoiceId);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        
+        // CHECK IF ALREADY PAID
+        if (data.status === 'paid' || data.paymentStatus === 'completed') {
+           console.log("Invoice already paid. Redirecting...");
+           window.location.href = "student.html";
+           return;
+        }
+
+        // IF NOT PAID, LOAD DATA FROM DB (More secure than URL)
+        existingDocRef = docRef;
+        currentInvoiceId = urlInvoiceId;
+        currentCourseName = data.courseName;
+        currentPrice = data.price;
+        
+      } else {
+        // INVOICE ID NOT FOUND IN DB -> Fallback to URL params for creation
+        console.log("Invoice ID not found. Falling back to URL params.");
+        handleFallback(urlName, urlPrice, urlInvoiceId);
+      }
+    } catch (e) {
+      console.error("Error fetching invoice:", e);
+      handleFallback(urlName, urlPrice, urlInvoiceId);
+    }
+  } else {
+    // B. NO INVOICE ID -> NEW TRANSACTION
+    handleFallback(urlName, urlPrice, null);
+  }
+
+  // UPDATE UI AND SHOW PAGE
+  document.getElementById("displayEmail").textContent = currentUserEmail;
+  document.getElementById("displayCourse").textContent = currentCourseName || "N/A";
+  document.getElementById("displayPrice").textContent = "$" + currentPrice;
+  
+  // Reveal page
+  document.body.classList.add('loaded');
 });
 
-// --- 4. PAYMENT & INVOICE LOGIC ---
-function selectPayment(methodValue, cardElement) {
+function handleFallback(name, price, oldId) {
+    // If we have name/price in URL, use them
+    if (name && price) {
+        currentCourseName = name;
+        currentPrice = price;
+        // Generate a new ID if the old one was invalid or missing
+        currentInvoiceId = oldId || "FBA-" + Math.floor(100000 + Math.random() * 900000);
+    } else {
+        // No data at all -> Error
+        alert("Invalid Payment Link. Missing Course Details.");
+        window.location.href = "student.html";
+    }
+}
+
+// --- 3. UI FUNCTIONS ---
+window.selectPayment = (methodValue, cardElement) => {
     document.getElementById("method").value = methodValue;
     const cards = document.querySelectorAll('.payment-card');
     cards.forEach(card => card.classList.remove('active'));
     cardElement.classList.add('active');
 }
 
-function proceedPayment(){
+window.proceedPayment = async () => {
   const method = document.getElementById("method").value;
-  const invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000); 
-  const dateStr = new Date().toLocaleDateString();
+  const payBtn = document.getElementById("payBtn");
+  
+  payBtn.textContent = "Processing...";
+  payBtn.disabled = true;
 
-  // --- A. UPDATE STATUS TO PENDING (FIRESTORE) ---
-  if(studentEmail && courseName) {
-      // Create object: { "Course Name": "pending" }
-      const updateData = {};
-      updateData[courseName] = "pending";
-      
-      // Save to Firestore (merge:true ensures we don't overwrite other courses)
-      db.collection("enrollments").doc(studentEmail).set(updateData, { merge: true })
-      .then(() => {
-          console.log("Status updated to pending in Firestore");
-      })
-      .catch((error) => {
-          console.error("Error writing document: ", error);
-      });
+  try {
+    // SAVE/UPDATE RECORD IN FIRESTORE "payments" collection
+    // This ensures we have a record of this attempt
+    const docRef = doc(db, "payments", currentInvoiceId);
+    
+    const paymentData = {
+        invoiceNumber: currentInvoiceId,
+        email: currentUserEmail,
+        courseName: currentCourseName,
+        price: currentPrice,
+        paymentMethod: method,
+        status: "pending", // Mark as pending initially
+        updatedAt: new Date(),
+        studentId: auth.currentUser.uid
+    };
 
-      // --- B. UPDATE LOCALSTORAGE (Backup) ---
-      const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
-      if(!statusData[studentEmail]) statusData[studentEmail] = {};
-      statusData[studentEmail][courseName] = "pending";
-      localStorage.setItem("courseStatus", JSON.stringify(statusData));
+    // Use setDoc with merge to create or update
+    await setDoc(docRef, paymentData, { merge: true });
+
+    // ALSO Update the 'enrollments' collection (legacy support if needed)
+    const enrollRef = doc(db, "enrollments", currentUserEmail);
+    const enrollUpdate = {};
+    enrollUpdate[currentCourseName] = "pending";
+    await setDoc(enrollRef, enrollUpdate, { merge: true });
+
+    // Populate Modal
+    document.getElementById("inv-num").textContent = currentInvoiceId;
+    document.getElementById("inv-date").textContent = new Date().toLocaleDateString();
+    document.getElementById("inv-method").textContent = method;
+    document.getElementById("inv-course-name").textContent = currentCourseName;
+    document.getElementById("inv-course-price").textContent = "$" + currentPrice;
+    document.getElementById("inv-final-total").textContent = "$" + currentPrice;
+
+    // Show Modal
+    document.getElementById("invoice-modal-overlay").style.display = "flex";
+    
+  } catch (error) {
+    console.error("Error saving payment:", error);
+    alert("Connection error. Please try again.");
+  } finally {
+    payBtn.textContent = "Generate Invoice & Pay";
+    payBtn.disabled = false;
   }
-
-  // --- C. POPULATE INVOICE ---
-  document.getElementById("inv-num").textContent = invNumber;
-  document.getElementById("inv-date").textContent = dateStr;
-  document.getElementById("inv-method").textContent = method;
-  document.getElementById("inv-course-name").textContent = courseName;
-  document.getElementById("inv-course-price").textContent = "$" + coursePrice;
-  document.getElementById("inv-final-total").textContent = "$" + coursePrice;
-
-  // --- D. SHOW MODAL ---
-  document.getElementById("invoice-modal-overlay").style.display = "flex";
 }
 
-// --- 5. FINISH & REDIRECT ---
-function finishAndRedirect() {
-    // Redirect to courses page
+window.finishAndRedirect = () => {
     window.location.href = "courses.html";
 }
 
-// --- 6. DOWNLOAD PDF ---
-function downloadPDF(){
+window.downloadPDF = () => {
   const element = document.getElementById('invoice-content');
   const invNum = document.getElementById("inv-num").textContent;
   const opt = {
@@ -462,6 +500,10 @@ function downloadPDF(){
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
   };
   html2pdf().set(opt).from(element).save();
+}
+
+window.closeInvoice = () => {
+    document.getElementById("invoice-modal-overlay").style.display = "none";
 }
 </script>
 
