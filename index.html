@@ -281,9 +281,9 @@
         
         <div id="errorBox" class="error-msg"></div>
 
-        <h2>Student Login</h2>
-        <p class="instruction-text">
-            Welcome back! Please enter your credentials to access your courses and continue learning.
+        <h2 id="pageTitle">Student Login</h2>
+        <p class="instruction-text" id="pageInstruction">
+            Welcome back! Please enter your credentials to access your courses.
         </p>
 
         <div class="input-group">
@@ -305,7 +305,7 @@
         </div>
 
         <button class="btn btn-login" onclick="handleLogin()">
-            <i class="fa fa-sign-in-alt"></i> Login to Portal
+            <i class="fa fa-sign-in-alt"></i> <span id="loginBtnText">Login to Portal</span>
         </button>
 
         <div class="divider">
@@ -324,9 +324,10 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-    // --- Configuration ---
+    // --- 1. CONFIGURATION ---
     const firebaseConfig = {
         apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
         authDomain: "students-login-29409.firebaseapp.com",
@@ -334,8 +335,23 @@
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    const db = firebase.firestore(); // Initialize DB
 
-    // --- Interaction Logic ---
+    // --- 2. URL PARAMETER HANDLING (Blogger Data) ---
+    // Grab data passed from Blogger
+    const urlParams = new URLSearchParams(window.location.search);
+    const courseId = urlParams.get('courseId');
+    const courseName = urlParams.get('name');
+    const coursePrice = urlParams.get('price');
+
+    // If a course is present, update the UI to reflect we are enrolling
+    if (courseId && courseName) {
+        document.getElementById('pageTitle').innerHTML = `Login to Enroll:<br><span style="color:#4f46e5; font-size:0.8em;">${courseName}</span>`;
+        document.getElementById('pageInstruction').innerText = "Please login to proceed with your enrollment application.";
+        document.getElementById('loginBtnText').innerText = "Login & Continue";
+    }
+
+    // --- 3. UI INTERACTIONS ---
 
     function togglePassword() {
         const passInput = document.getElementById('password');
@@ -353,44 +369,76 @@
 
     function showError(message) {
         const box = document.getElementById('errorBox');
-        
-        // Clearer messages
         let clearMessage = message;
         if(message.includes('user-not-found')) clearMessage = "We couldn't find an account with that email.";
         if(message.includes('wrong-password')) clearMessage = "Incorrect password. Please try again.";
         if(message.includes('invalid-email')) clearMessage = "Please enter a valid email address.";
         if(message.includes('too-many-requests')) clearMessage = "Too many failed attempts. Please try again later.";
-
         box.textContent = clearMessage;
         box.style.display = 'block';
     }
 
-    function handleLogin() {
+    // --- 4. CORE LOGIC: LOGIN & REDIRECT ---
+
+    async function handleLogin() {
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value.trim();
         const remember = document.getElementById('rememberMe').checked;
         const errorBox = document.getElementById('errorBox');
         
-        errorBox.style.display = 'none'; // Reset error
+        errorBox.style.display = 'none';
 
         if (!email || !password) {
             showError("Please enter both your email and password.");
             return;
         }
 
-        const persistence = remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
+        try {
+            // Set Persistence
+            const persistence = remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
+            await auth.setPersistence(persistence);
+            
+            // Sign In
+            const userCredential = await auth.signInWithEmailAndPassword(email, password);
+            const user = userCredential.user;
 
-        auth.setPersistence(persistence)
-            .then(() => {
-                return auth.signInWithEmailAndPassword(email, password);
-            })
-            .then(() => {
-                // Success
+            // --- CHECK ENROLLMENT LOGIC ---
+            checkEnrollmentAndRedirect(user);
+
+        } catch (error) {
+            showError(error.message);
+        }
+    }
+
+    async function checkEnrollmentAndRedirect(user) {
+        // SCENARIO A: Normal Login (No course data in URL)
+        if (!courseId) {
+            window.location.href = 'student.html';
+            return;
+        }
+
+        // SCENARIO B: Enrolling (Course data exists)
+        // Check DB: Does this user already have a doc for this course?
+        try {
+            const snapshot = await db.collection('enrollments')
+                .where('userId', '==', user.uid)
+                .where('courseId', '==', courseId)
+                .get();
+
+            if (!snapshot.empty) {
+                // User HAS the course -> Go to Dashboard
                 window.location.href = 'student.html';
-            })
-            .catch((error) => {
-                showError(error.message);
-            });
+            } else {
+                // User DOES NOT have the course -> Go to Payment Preview
+                // Pass the data along to the next page
+                const targetUrl = `payment-preview.html?courseId=${courseId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
+                window.location.href = targetUrl;
+            }
+        } catch (error) {
+            console.error("Database check failed", error);
+            // Fallback: If DB check fails, send them to dashboard or show error
+            window.location.href = 'student.html'; 
+        }
     }
 
     function handleForgot() {
@@ -404,9 +452,18 @@
             .catch((error) => showError(error.message));
     }
 
-    // --- Direct to Signup Page ---
+    // --- 5. SIGNUP REDIRECT (Preserve Data) ---
     function goToSignup() {
-        window.location.href = 'signup.html';
+        // If the user wants to sign up, we must pass the course info 
+        // to the signup page so they don't lose it!
+        let target = 'signup.html';
+        
+        if (courseId) {
+            // Append params if they exist
+            target += `?courseId=${courseId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
+        }
+        
+        window.location.href = target;
     }
 </script>
 
