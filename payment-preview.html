@@ -29,10 +29,7 @@ body {
     align-items: center; 
     min-height: 100vh; 
     padding: 20px;
-    opacity: 0; /* Hidden initially to prevent flash while checking DB */
-    transition: opacity 0.5s ease;
 }
-body.loaded { opacity: 1; }
 
 .container { 
     width: 100%; 
@@ -43,7 +40,34 @@ body.loaded { opacity: 1; }
     box-shadow: 0 20px 40px rgba(79, 70, 229, 0.15); 
     text-align: center;
     border-top: 5px solid var(--secondary);
+    position: relative; /* For loader positioning */
+    overflow: hidden;
 }
+
+/* --- SCANNING/LOADING OVERLAY --- */
+#scanning-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(5px);
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.spinner {
+    width: 40px; height: 40px;
+    border: 4px solid #e5e7eb;
+    border-top: 4px solid var(--secondary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
 
 .logo-img {
     max-width: 150px;
@@ -202,7 +226,6 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 .inv-btn { padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 14px; }
 .btn-close-inv { background: #4f46e5; color: #fff; } 
 .btn-close-inv:hover { background: #4338ca; }
-
 .btn-download { background: #10b981; color: #fff; display: flex; align-items: center; gap: 5px;}
 .btn-download:hover { background: #059669; }
 </style>
@@ -211,6 +234,11 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 <body>
 
 <div class="container">
+  <div id="scanning-overlay">
+    <div class="spinner"></div>
+    <span>Checking Enrollment Status...</span>
+  </div>
+
   <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" alt="Logo" class="logo-img">
   
   <h2>Enrollment Summary</h2>
@@ -322,7 +350,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
       <button class="inv-btn btn-close-inv" onclick="finishAndRedirect()">Finish & Return to Courses</button>
       
       <button class="inv-btn btn-download" onclick="downloadPDF()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         Download PDF
       </button>
     </div>
@@ -333,7 +361,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
 // --- 1. CONFIGURATION ---
 const firebaseConfig = {
@@ -351,9 +379,8 @@ let currentInvoiceId = null;
 let currentCourseName = "";
 let currentPrice = "0.00";
 let currentUserEmail = "";
-let existingDocRef = null;
 
-// --- 2. MAIN LOGIC (CHECK PAID VS UNPAID) ---
+// --- 2. MAIN LOGIC (SCAN -> REDIRECT OR SHOW) ---
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "login.html";
@@ -366,7 +393,7 @@ onAuthStateChanged(auth, async (user) => {
   const urlName = urlParams.get('name');
   const urlPrice = urlParams.get('price');
 
-  // A. IF INVOICE ID EXISTS IN URL -> CHECK FIREBASE
+  // STEP 1: If an Invoice ID is present in URL, CHECK IT
   if (urlInvoiceId) {
     try {
       const docRef = doc(db, "payments", urlInvoiceId);
@@ -375,55 +402,56 @@ onAuthStateChanged(auth, async (user) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         
-        // CHECK IF ALREADY PAID
-        if (data.status === 'paid' || data.paymentStatus === 'completed') {
-           console.log("Invoice already paid. Redirecting...");
+        // CRITICAL CHECK: REDIRECT IF PAID OR PENDING
+        if (data.status === 'paid' || data.status === 'pending') {
+           console.log("Invoice active (paid/pending). Redirecting to student dashboard...");
            window.location.href = "student.html";
-           return;
+           return; // Stop here, do not reveal page
         }
 
-        // IF NOT PAID, LOAD DATA FROM DB (More secure than URL)
-        existingDocRef = docRef;
+        // If found but NOT paid/pending (rare, maybe 'failed'), load data
         currentInvoiceId = urlInvoiceId;
         currentCourseName = data.courseName;
         currentPrice = data.price;
-        
+
       } else {
-        // INVOICE ID NOT FOUND IN DB -> Fallback to URL params for creation
-        console.log("Invoice ID not found. Falling back to URL params.");
-        handleFallback(urlName, urlPrice, urlInvoiceId);
+        // ID in URL but NOT in DB. 
+        // This is a "New Transaction" situation. Use the ID from URL as the new ID.
+        console.log("Invoice ID not found in DB. Treating as new.");
+        currentInvoiceId = urlInvoiceId;
+        currentCourseName = urlName;
+        currentPrice = urlPrice;
       }
     } catch (e) {
       console.error("Error fetching invoice:", e);
-      handleFallback(urlName, urlPrice, urlInvoiceId);
+      // Fallback: treat as new
+      currentInvoiceId = urlInvoiceId;
+      currentCourseName = urlName;
+      currentPrice = urlPrice;
     }
   } else {
-    // B. NO INVOICE ID -> NEW TRANSACTION
-    handleFallback(urlName, urlPrice, null);
+    // STEP 2: No Invoice ID in URL -> GENERATE NEW ID
+    console.log("No Invoice ID provided. Creating new session.");
+    currentInvoiceId = "FBA-" + Math.floor(100000 + Math.random() * 900000);
+    currentCourseName = urlName;
+    currentPrice = urlPrice;
   }
 
-  // UPDATE UI AND SHOW PAGE
+  // STEP 3: REVEAL PAGE (If we didn't redirect)
+  if (!currentCourseName) {
+      alert("Missing Course Details. Please go back to courses page.");
+      window.location.href = "student.html";
+      return;
+  }
+
+  // Update UI
   document.getElementById("displayEmail").textContent = currentUserEmail;
-  document.getElementById("displayCourse").textContent = currentCourseName || "N/A";
+  document.getElementById("displayCourse").textContent = currentCourseName;
   document.getElementById("displayPrice").textContent = "$" + currentPrice;
   
-  // Reveal page
-  document.body.classList.add('loaded');
+  // Hide Scanner Overlay
+  document.getElementById("scanning-overlay").style.display = "none";
 });
-
-function handleFallback(name, price, oldId) {
-    // If we have name/price in URL, use them
-    if (name && price) {
-        currentCourseName = name;
-        currentPrice = price;
-        // Generate a new ID if the old one was invalid or missing
-        currentInvoiceId = oldId || "FBA-" + Math.floor(100000 + Math.random() * 900000);
-    } else {
-        // No data at all -> Error
-        alert("Invalid Payment Link. Missing Course Details.");
-        window.location.href = "student.html";
-    }
-}
 
 // --- 3. UI FUNCTIONS ---
 window.selectPayment = (methodValue, cardElement) => {
@@ -441,8 +469,8 @@ window.proceedPayment = async () => {
   payBtn.disabled = true;
 
   try {
-    // SAVE/UPDATE RECORD IN FIRESTORE "payments" collection
-    // This ensures we have a record of this attempt
+    // FORCE SAVE: Create or Overwrite the invoice document
+    // We use setDoc with merge:true to handle both new and existing without errors
     const docRef = doc(db, "payments", currentInvoiceId);
     
     const paymentData = {
@@ -451,19 +479,12 @@ window.proceedPayment = async () => {
         courseName: currentCourseName,
         price: currentPrice,
         paymentMethod: method,
-        status: "pending", // Mark as pending initially
+        status: "pending", // Set to pending immediately
         updatedAt: new Date(),
         studentId: auth.currentUser.uid
     };
 
-    // Use setDoc with merge to create or update
     await setDoc(docRef, paymentData, { merge: true });
-
-    // ALSO Update the 'enrollments' collection (legacy support if needed)
-    const enrollRef = doc(db, "enrollments", currentUserEmail);
-    const enrollUpdate = {};
-    enrollUpdate[currentCourseName] = "pending";
-    await setDoc(enrollRef, enrollUpdate, { merge: true });
 
     // Populate Modal
     document.getElementById("inv-num").textContent = currentInvoiceId;
@@ -477,8 +498,8 @@ window.proceedPayment = async () => {
     document.getElementById("invoice-modal-overlay").style.display = "flex";
     
   } catch (error) {
-    console.error("Error saving payment:", error);
-    alert("Connection error. Please try again.");
+    console.error("Error generating invoice:", error);
+    alert("System Error: Could not generate invoice. Please check your internet.");
   } finally {
     payBtn.textContent = "Generate Invoice & Pay";
     payBtn.disabled = false;
