@@ -9,7 +9,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   
   <style>
-    /* --- STYLES (Keep existing styles) --- */
+    /* --- STYLES --- */
     :root {
       --primary: #4f46e5;
       --secondary: #7c3aed;
@@ -29,7 +29,7 @@
       align-items: center;
       min-height: 100vh;
       padding: 20px;
-      opacity: 0;
+      opacity: 0; /* Hidden until duplicate check passes */
       transition: opacity 0.5s ease;
     }
     body.loaded { opacity: 1; }
@@ -111,7 +111,6 @@
       box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
     }
 
-    /* INVOICE MODAL STYLES */
     #invoice-modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.8); z-index: 100000;
@@ -126,7 +125,6 @@
     }
 
     #invoice-scroll-area { padding: 40px; overflow-y: auto; position: relative; }
-
     .unpaid-stamp {
       position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) rotate(-25deg);
       color: #c0392b; border: 4px solid #c0392b; padding: 10px 40px;
@@ -143,7 +141,7 @@
 
     .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; position: relative; z-index: 1; }
     .inv-table th { text-align: left; background: #f8f9fa; padding: 12px; font-size: 12px; text-transform: uppercase; color: #555; border-bottom: 2px solid #ddd; }
-    .inv-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
+    .inv-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; vertical-align: middle; }
     .inv-total-row td { border-top: 2px solid #333; font-weight: 700; font-size: 16px; color: #000; }
 
     .pay-box { background: #f0f7ff; border: 1px solid #cce5ff; border-radius: 8px; padding: 20px; margin-bottom: 20px; position: relative; z-index: 1; }
@@ -162,6 +160,7 @@
     }
     .inv-btn { padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 14px; }
     .btn-close-inv { background: #4f46e5; color: #fff; }
+    .btn-close-inv:hover { background: #4338ca; }
     .btn-download { background: #10b981; color: #fff; display: flex; align-items: center; gap: 5px;}
   </style>
 </head>
@@ -202,10 +201,10 @@
     </div>
   </div>
 
-  <button type="button" id="payBtn" class="main-btn" onclick="proceedPayment()">Generate Invoice & Pay</button>
+  <button type="button" class="main-btn" id="generateBtn" onclick="proceedPayment()">Generate Invoice & Pay</button>
 </div>
 
-<!-- INVOICE MODAL -->
+<!-- MODAL SECTION -->
 <div id="invoice-modal-overlay">
   <div id="invoice-container">
     <div id="invoice-content">
@@ -222,13 +221,11 @@
             </div>
           </div>
         </div>
-
         <table class="inv-table">
-          <thead><tr><th>Description</th><th>Type</th><th style="text-align:right">Total</th></tr></thead>
-          <tbody><tr><td id="inv-course-name">...</td><td>Online Course</td><td id="inv-course-price" style="text-align:right">$0.00</td></tr></tbody>
+          <thead><tr><th>Description</th><th width="100">Type</th><th width="100" style="text-align:right">Total</th></tr></thead>
+          <tbody><tr><td id="inv-course-name">Course Name</td><td>Online Course</td><td id="inv-course-price" style="text-align:right">$0.00</td></tr></tbody>
           <tfoot><tr class="inv-total-row"><td colspan="2" style="text-align:right;">Grand Total:</td><td id="inv-final-total" style="text-align:right">$0.00</td></tr></tfoot>
         </table>
-
         <div class="pay-box">
           <span class="pay-header">PAYMENT INSTRUCTIONS</span>
           <div class="pay-details">
@@ -237,19 +234,19 @@
             <div><span class="pay-label">Bank Acc:</span> FBC / CBZ Academy Account</div>
           </div>
         </div>
-
         <div class="pay-box proof-box">
           <span class="pay-header proof-header">PROOF OF PAYMENT</span>
           <div class="pay-details">
-            Please send proof to:
+            Please send proof of payment to:
             <div style="margin-top:5px;"><strong>WhatsApp:</strong> +263 773 371 163</div>
             <div><strong>Email:</strong> petronela.hr@foodbusinessac.co.zw</div>
           </div>
         </div>
+        <div class="inv-footer">Thank you for your business! Food Business Academy.</div>
       </div>
     </div>
     <div class="inv-actions">
-      <button class="inv-btn btn-close-inv" onclick="window.location.href='student.html'">Finish & Return</button>
+      <button class="inv-btn btn-close-inv" onclick="finishAndRedirect()">Finish & Return to Dashboard</button>
       <button class="inv-btn btn-download" onclick="downloadPDF()">Download PDF</button>
     </div>
   </div>
@@ -260,93 +257,122 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-  // --- 1. CONFIGURATION ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
-    authDomain: "students-login-29409.firebaseapp.com",
-    projectId: "students-login-29409"
-  };
-  
-  if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
-  const db = firebase.firestore(); 
+// --- 1. CONFIGURATION ---
+const firebaseConfig = {
+  apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+  authDomain: "students-login-29409.firebaseapp.com",
+  projectId: "students-login-29409"
+};
+if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+const db = firebase.firestore();
 
-  // 1. GET THE INVOICE ID FROM THE URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const invoiceId = urlParams.get('invoiceId');
+// --- 2. GET URL DATA ---
+const urlParams = new URLSearchParams(window.location.search);
+const courseName = urlParams.get('name') || localStorage.getItem("courseName");
+const coursePrice = urlParams.get('price') || localStorage.getItem("coursePrice");
+let studentEmail = "";
 
-  // 2. AUTH & DATABASE LOAD
-  firebase.auth().onAuthStateChanged(async (user) => {
-    if (user) {
-      if (!invoiceId) {
-        alert("No invoice reference found. Returning to courses.");
-        window.location.href = "student.html";
-        return;
-      }
+if(document.getElementById("displayCourse")) {
+  document.getElementById("displayCourse").textContent = courseName || "N/A";
+  document.getElementById("displayPrice").textContent = "$" + (coursePrice || "0.00");
+}
 
-      // 3. FETCH DATA FROM FIRESTORE
-      try {
-        // We use the invoiceId directly as requested
-        const docRef = db.collection("payments").doc(invoiceId);
-        const docSnap = await docRef.get();
+// --- 3. DUPLICATE CHECK LOGIC ---
+firebase.auth().onAuthStateChanged((user) => {
+  if (user) {
+    studentEmail = user.email;
+    document.getElementById("displayEmail").textContent = studentEmail;
 
-        if (docSnap.exists) {
-          const data = docSnap.data();
-
-          // 4. POPULATE THE PREVIEW UI
-          document.getElementById("displayEmail").textContent = data.email || user.email;
-          document.getElementById("displayCourse").textContent = data.courseName;
-          document.getElementById("displayPrice").textContent = "$" + data.price;
-          
-          // Populate Invoice Modal (hidden until button clicked)
-          document.getElementById("inv-num").textContent = data.invoiceNumber || invoiceId;
-          document.getElementById("inv-course-name").textContent = data.courseName;
-          document.getElementById("inv-course-price").textContent = "$" + data.price;
-          document.getElementById("inv-final-total").textContent = "$" + data.price;
-          
-          const dateObj = data.createdAt ? data.createdAt.toDate() : new Date();
-          document.getElementById("inv-date").textContent = dateObj.toLocaleDateString();
-
-          document.body.classList.add('loaded');
-        } else {
-          alert("Invoice not found in database.");
-          window.location.href = "student.html";
-        }
-      } catch (error) {
-        console.error("Error loading invoice:", error);
-      }
-    } else {
-      window.location.href = "index.html";
+    if (!courseName || courseName === "N/A" || !coursePrice) {
+      window.location.href = "student.html";
+      return;
     }
-  });
 
-  // UI Selection function
-  function selectPayment(methodValue, cardElement) {
-    document.getElementById("method").value = methodValue;
-    document.querySelectorAll('.payment-card').forEach(card => card.classList.remove('active'));
-    cardElement.classList.add('active');
-  }
+    // CHECK NEW STRUCTURE: payments/{email}/courses/{courseName}
+    const docRef = db.collection("payments").doc(studentEmail).collection("courses").doc(courseName);
 
-  // 5. UPDATE THE PROCEED FUNCTION
-  function proceedPayment() {
-    // Since the invoice is ALREADY in the database (status: pending),
-    // we just need to show the modal now.
-    document.getElementById("inv-method").textContent = document.getElementById("method").value;
-    document.getElementById("invoice-modal-overlay").style.display = "flex";
-  }
+    docRef.get().then((doc) => {
+      if (doc.exists) {
+        // Invoice already exists for this specific course. Redirect to avoid duplicates.
+        console.log("Invoice already exists for " + courseName + ". Redirecting...");
+        window.location.href = "student.html";
+      } else {
+        // No invoice found, show the UI
+        document.body.classList.add('loaded');
+      }
+    }).catch((error) => {
+      console.error("Firestore Error:", error);
+      document.body.classList.add('loaded');
+    });
 
-  function downloadPDF(){
-    const element = document.getElementById('invoice-content');
-    const invNum = document.getElementById("inv-num").textContent;
-    const opt = {
-      margin: 0.5,
-      filename: `Invoice-${invNum}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-    };
-    html2pdf().set(opt).from(element).save();
+  } else {
+    window.location.href = "index.html";
   }
+});
+
+function selectPayment(val, el) {
+  document.getElementById("method").value = val;
+  document.querySelectorAll('.payment-card').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// --- 4. GENERATE & SAVE LOGIC ---
+function proceedPayment(){
+  const btn = document.getElementById("generateBtn");
+  btn.disabled = true;
+  btn.innerText = "Processing...";
+
+  const method = document.getElementById("method").value;
+  const invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
+  const dateStr = new Date().toLocaleDateString();
+
+  // Save to structure: payments -> email -> courses -> Course Name
+  const invoiceData = {
+    status: "pending",
+    invoiceNumber: invNumber,
+    paymentMethod: method,
+    amount: coursePrice,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  db.collection("payments").doc(studentEmail).collection("courses").doc(courseName)
+    .set(invoiceData)
+    .then(() => {
+      // Update UI Modal
+      document.getElementById("inv-num").textContent = invNumber;
+      document.getElementById("inv-date").textContent = dateStr;
+      document.getElementById("inv-method").textContent = method;
+      document.getElementById("inv-course-name").textContent = courseName;
+      document.getElementById("inv-course-price").textContent = "$" + coursePrice;
+      document.getElementById("inv-final-total").textContent = "$" + coursePrice;
+
+      document.getElementById("invoice-modal-overlay").style.display = "flex";
+    })
+    .catch((error) => {
+      console.error("Error creating invoice:", error);
+      alert("Error generating invoice. Please try again.");
+      btn.disabled = false;
+      btn.innerText = "Generate Invoice & Pay";
+    });
+}
+
+function finishAndRedirect() {
+  window.location.href = "student.html";
+}
+
+function downloadPDF(){
+  const element = document.getElementById('invoice-content');
+  const invNum = document.getElementById("inv-num").textContent;
+  const opt = {
+    margin: 0.5,
+    filename: `Invoice-${invNum}.pdf`,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2 },
+    jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+  };
+  html2pdf().set(opt).from(element).save();
+}
 </script>
 
 </body>
-  </html>
+</html>
