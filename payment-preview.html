@@ -377,7 +377,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
   </div>
 </div>
 
-<script type="module">
+        <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
@@ -409,9 +409,9 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  // PREVENT REDIRECT: If no invoiceId, just show error in the loader div.
+  // REQUIRED CHANGE: If no invoiceId is present, silently redirect to the dashboard.
   if (!invoiceId) {
-    document.getElementById("card-loader").innerHTML = "<span>Error: No Invoice ID provided.</span><br><small><a href='courses.html'>Go back to Courses</a></small>";
+    window.location.href = "student.html"; 
     return;
   }
 
@@ -425,13 +425,11 @@ onAuthStateChanged(auth, async (user) => {
       
       // Check for security: does this invoice belong to the logged-in user?
       if (paymentData.studentId !== user.uid) {
-        alert("Unauthorized access to this invoice.");
-        window.location.href = "courses.html";
+        window.location.href = "student.html"; // Redirect unauthorized access to dashboard
         return;
       }
 
-      // 2. SILENT REDIRECT CHECK
-      // Now that we know the courseId from paymentData, check if user is already enrolled
+      // 2. SILENT REDIRECT CHECK (If already enrolled, redirect)
       const userRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userRef);
 
@@ -455,12 +453,13 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById("payBtn").disabled = false;
 
     } else {
-      // Invoice doesn't exist in DB
-      document.getElementById("card-loader").innerHTML = "<span>Invoice not found.</span><br><small><a href='courses.html'>Return to Courses</a></small>";
+      // Invoice doesn't exist in DB, redirect to dashboard as requested
+      window.location.href = "student.html";
     }
   } catch (error) {
+    // Catch any connection/fetch error and redirect to prevent being stuck on a blank screen
     console.error("Error fetching invoice:", error);
-    document.getElementById("card-loader").textContent = "Error loading payment details.";
+    window.location.href = "student.html";
   }
 });
 
@@ -495,7 +494,6 @@ window.proceedPayment = async () => {
     document.getElementById("inv-num").textContent = paymentData.invoiceNumber; 
     document.getElementById("inv-date").textContent = new Date().toLocaleDateString();
     document.getElementById("inv-method").textContent = method;
-    // Note: Removed Student Details mapping as requested
     
     // Table Data
     document.getElementById("inv-course-name").textContent = paymentData.courseName;
@@ -534,6 +532,3 @@ window.downloadPDF = () => {
   html2pdf().set(opt).from(element).save();
 }
 </script>
-
-</body>
-</html>
