@@ -271,6 +271,7 @@ header {
 
 /* Loading State */
 .loading-box { grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted); }
+.error-msg { grid-column: 1/-1; text-align: center; padding: 20px; color: red; background: #fee2e2; border-radius: 8px;}
 
 /* Mobile */
 @media(max-width: 600px) {
@@ -302,7 +303,7 @@ header {
 
 <main class="container">
   <div class="grid" id="coursesGrid">
-    <div class="loading-box">Loading Academy Courses...</div>
+    <div class="loading-box">Checking enrollment status...</div>
   </div>
 </main>
 
@@ -329,7 +330,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* 📚 COURSES DATA (Expanded with Overview & Curriculum) */
+/* 📚 COURSES DATA */
 const courses = [
   {
     name: "Food Business Management Course",
@@ -365,49 +366,92 @@ const courses = [
 
 const grid = document.getElementById("coursesGrid");
 
-/* 🔥 AUTH LOGIC */
+/* 🔥 MAIN AUTH & DATA LOGIC */
 onAuthStateChanged(auth, async (user) => {
-  if (!user) return location.href = "login.html";
+  if (!user) {
+    // Redirect if not logged in
+    window.location.href = "login.html"; 
+    return;
+  }
 
-  // UI Updates
-  document.getElementById("studentEmail").textContent = user.email.split('@')[0]; // Show name part only
+  // 1. Update Header UI
+  document.getElementById("studentEmail").textContent = user.email ? user.email.split('@')[0] : "Student";
   document.getElementById("studentId").textContent = `ID: ${user.uid.substring(0,6).toUpperCase()}`;
-  document.getElementById("avatarLetter").textContent = user.email.charAt(0).toUpperCase();
+  if(user.email) document.getElementById("avatarLetter").textContent = user.email.charAt(0).toUpperCase();
 
-  // Fetch Data
-  const studentSnap = await getDoc(doc(db,"students",user.uid));
-  const coursesPaid = studentSnap.exists() ? (studentSnap.data().coursesPaid || []) : [];
+  // Variables to store DB data
+  let coursesPaid = [];
+  let paymentMap = {};
 
-  const paymentsSnap = await getDocs(
-    query(collection(db,"payments"), where("studentId","==",user.uid))
-  );
+  // 2. Fetch Data with Error Handling
+  try {
+    console.log("User logged in. Fetching data for:", user.uid);
 
-  const paymentMap = {};
-  paymentsSnap.forEach(d => paymentMap[d.data().courseName] = {...d.data(), id: d.id});
+    // A. Check for 'students' profile (Paid Status)
+    const studentRef = doc(db, "students", user.uid);
+    const studentSnap = await getDoc(studentRef);
+    
+    if (studentSnap.exists()) {
+      coursesPaid = studentSnap.data().coursesPaid || [];
+      console.log("Paid courses found:", coursesPaid);
+    } else {
+      console.log("No student profile found (new user).");
+    }
 
-  // Render Grid
-  grid.innerHTML = "";
+    // B. Check for 'payments' (Pending Status)
+    // IMPORTANT: Requires Firestore Index if you have many records, but should work for basic queries
+    const q = query(collection(db, "payments"), where("studentId", "==", user.uid));
+    const paymentsSnap = await getDocs(q);
+
+    paymentsSnap.forEach(d => {
+      const data = d.data();
+      // Store pending payments mapped by Course Name
+      paymentMap[data.courseName] = { ...data, id: d.id };
+    });
+    console.log("Pending payments found:", paymentMap);
+
+  } catch (error) {
+    console.error("Error fetching Firestore data:", error);
+    // Note: We do NOT return here. We still want to render the courses 
+    // so the user can see them, even if the DB connection failed.
+  }
+
+  // 3. Render the Grid
+  renderCourses(coursesPaid, paymentMap);
+});
+
+/* 🎨 RENDER FUNCTION */
+function renderCourses(coursesPaid, paymentMap) {
+  grid.innerHTML = ""; // Clear loading message
 
   courses.forEach(course => {
-    const hasAccess = coursesPaid.includes(course.name);
-    const payment = paymentMap[course.name];
+    // Determine status
+    const isPaid = coursesPaid.includes(course.name);
+    const paymentInfo = paymentMap[course.name];
+    const isPending = paymentInfo && paymentInfo.status === "pending";
 
-    let badge = "", button = "";
+    let badge = "";
+    let button = "";
 
-    if (hasAccess) {
+    // Logic for Buttons/Badges
+    if (isPaid) {
       badge = `<div class="badge approved">Active Student</div>`;
-      button = `<button class="btn btn-access" onclick="startCourse('${course.name}')">Enter Classroom</button>`;
-    } else if (payment?.status === "pending") {
+      button = `<button class="btn btn-access" onclick="window.startCourse('${course.name}')">Enter Classroom</button>`;
+    } 
+    else if (isPending) {
       badge = `<div class="badge pending">Pending Approval</div>`;
       button = `
         <button class="btn btn-pending" disabled>Processing Payment...</button>
-        <a class="link-cancel" onclick="cancelInvoice('${payment.id}')">Cancel this invoice</a>
+        <a class="link-cancel" href="#" onclick="window.cancelInvoice('${paymentInfo.id}'); return false;">Cancel this invoice</a>
       `;
-    } else {
-      button = `<button class="btn btn-pay" onclick="createInvoice('${course.name}', ${course.price})">Enroll Now</button>`;
+    } 
+    else {
+      // Default State
+      button = `<button class="btn btn-pay" onclick="window.createInvoice('${course.name}', ${course.price})">Enroll Now</button>`;
     }
 
-    grid.innerHTML += `
+    // Generate HTML
+    const html = `
       <div class="course-card">
         <div class="card-top-accent"></div>
         ${badge}
@@ -433,43 +477,51 @@ onAuthStateChanged(auth, async (user) => {
         </div>
       </div>
     `;
+    grid.insertAdjacentHTML('beforeend', html);
   });
-});
+}
 
-/* 🧾 INVOICE LOGIC */
+/* ⚡ GLOBAL ACTIONS (Attached to Window) */
 window.createInvoice = async (courseName, price) => {
   const user = auth.currentUser;
-  if (!user) return;
+  if (!user) return alert("Please login first");
 
-  if (!confirm(`Confirm enrollment for:\n${courseName}\nPrice: $${price}`)) return;
+  const confirmMsg = `Confirm enrollment for:\n${courseName}\nPrice: $${price}`;
+  if (!confirm(confirmMsg)) return;
 
-  const existingQ = query(collection(db,"payments"), where("studentId","==",user.uid), where("courseName","==",courseName), where("status","==","pending"));
-  const existingSnap = await getDocs(existingQ);
+  try {
+    // 1. Create the invoice document
+    const docRef = await addDoc(collection(db, "payments"), {
+      studentId: user.uid,
+      studentName: user.displayName || user.email,
+      email: user.email,
+      courseName: courseName,
+      price: price,
+      paymentMethod: "Manual/Ecocash",
+      invoiceNumber: `FBA-${Math.floor(100000 + Math.random() * 900000)}`,
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
 
-  if (!existingSnap.empty) {
-    window.location.href = `student-details.html?invoiceId=${existingSnap.docs[0].id}`;
-    return;
+    // 2. Redirect to your invoice preview page
+    // Note: Ensure 'payment-preview.html' exists or change this to where you want them to go
+    window.location.href = `payment-preview.html?name=${encodeURIComponent(courseName)}&price=${price}`;
+    
+  } catch (error) {
+    console.error("Error creating invoice:", error);
+    alert("Could not create invoice. Check console for permission errors.");
   }
-
-  const docRef = await addDoc(collection(db,"payments"), {
-    studentId: user.uid,
-    studentName: user.displayName || "Student",
-    email: user.email,
-    courseName,
-    price,
-    paymentMethod: "Manual",
-    invoiceNumber: `FBA-${Date.now()}`,
-    status: "pending",
-    createdAt: serverTimestamp()
-  });
-
-  window.location.href = `student-details.html?invoiceId=${docRef.id}`;
 };
 
 window.cancelInvoice = async (invoiceId) => {
   if (!confirm("Are you sure you want to cancel this pending invoice?")) return;
-  await deleteDoc(doc(db,"payments",invoiceId));
-  location.reload();
+  try {
+    await deleteDoc(doc(db, "payments", invoiceId));
+    window.location.reload(); // Refresh to update UI
+  } catch (error) {
+    console.error("Error canceling:", error);
+    alert("Failed to cancel invoice.");
+  }
 };
 
 window.startCourse = (courseName) => {
@@ -482,8 +534,9 @@ window.startCourse = (courseName) => {
   };
   const page = coursePages[courseName];
   if (page) window.location.href = page;
-  else alert("Error: Course page not linked.");
+  else alert("Error: Course page not yet available.");
 };
+
 </script>
 </body>
-</html>
+  </html>
