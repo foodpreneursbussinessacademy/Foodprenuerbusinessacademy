@@ -9,7 +9,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
-/* ================= THEME ================= */
 :root {
   --primary:#4f46e5;
   --secondary:#7c3aed;
@@ -19,306 +18,173 @@
   --text:#1f2937;
   --muted:#6b7280;
 }
-
 *{box-sizing:border-box;margin:0;padding:0}
 body{
   font-family:Poppins,sans-serif;
   background:var(--bg);
-  min-height:100vh;
   display:flex;
   justify-content:center;
   align-items:center;
+  min-height:100vh;
   padding:20px;
   opacity:0;
   transition:.4s;
 }
 body.loaded{opacity:1}
-
 .container{
-  width:100%;
-  max-width:500px;
+  max-width:500px;width:100%;
   background:var(--card);
-  padding:35px;
+  padding:40px 30px;
   border-radius:20px;
-  box-shadow:0 20px 40px rgba(79,70,229,.2);
+  box-shadow:0 20px 40px rgba(0,0,0,.15);
   text-align:center;
 }
-
-.logo-img{max-width:140px;margin-bottom:20px}
-
-h2{font-size:22px;margin-bottom:5px}
-.sub-text{font-size:14px;color:var(--muted);margin-bottom:25px}
-
+.logo-img{max-width:150px;margin:0 auto 20px}
+.sub-text{color:var(--muted);margin-bottom:20px}
 .details-box{
   background:#f9fafb;
-  padding:20px;
   border-radius:12px;
-  border:1px dashed #d1d5db;
+  padding:20px;
   text-align:left;
-  margin-bottom:25px;
+  margin-bottom:20px;
 }
-.detail-row{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:12px;
-}
-.detail-row .label{color:var(--muted)}
-.detail-row .value{font-weight:600;color:var(--primary)}
-
+.detail-row{display:flex;justify-content:space-between;margin-bottom:10px}
+.label{color:var(--muted)}
+.value{font-weight:600;color:var(--primary)}
 .payment-grid{
   display:grid;
   grid-template-columns:repeat(3,1fr);
-  gap:12px;
-  margin-bottom:25px;
+  gap:10px;
+  margin-bottom:20px;
 }
 .payment-card{
   border:2px solid #e5e7eb;
   border-radius:12px;
-  padding:10px;
   height:80px;
   display:flex;
-  align-items:center;
   justify-content:center;
+  align-items:center;
   cursor:pointer;
 }
 .payment-card.active{
   border-color:var(--secondary);
   background:#f5f3ff;
 }
-.payment-card img{max-width:100%;max-height:100%;object-fit:contain}
-
+.payment-card img{max-width:90%;max-height:90%}
 .main-btn{
   width:100%;
-  padding:16px;
-  background:var(--gradient);
-  border:none;
-  color:#fff;
-  border-radius:12px;
-  font-size:16px;
-  font-weight:600;
-  cursor:pointer;
-}
-.main-btn:disabled{
-  opacity:.6;
-  cursor:not-allowed;
-}
-
-/* ================= INVOICE MODAL ================= */
-#invoice-modal-overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,.85);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:10000;
-  padding:20px;
-}
-#invoice-container{
-  background:#fff;
-  max-width:700px;
-  width:100%;
-  max-height:90vh;
-  display:flex;
-  flex-direction:column;
-}
-#invoice-scroll-area{
-  padding:40px;
-  overflow:auto;
-  position:relative;
-}
-.unpaid-stamp{
-  position:absolute;
-  top:45%;
-  left:50%;
-  transform:translate(-50%,-50%) rotate(-25deg);
-  font-size:3rem;
-  border:4px solid #c0392b;
-  padding:10px 40px;
-  color:#c0392b;
-  opacity:.25;
-  font-weight:800;
-}
-.inv-header{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:30px;
-}
-.inv-header img{height:70px}
-.inv-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-bottom:25px;
-}
-.inv-table th,.inv-table td{
-  padding:12px;
-  border-bottom:1px solid #eee;
-}
-.inv-table th{background:#f8f9fa;font-size:12px}
-.inv-total-row td{font-weight:700;border-top:2px solid #000}
-
-.inv-actions{
-  background:#f1f1f1;
   padding:15px;
-  display:flex;
-  justify-content:flex-end;
-  gap:10px;
-}
-.inv-btn{
-  padding:12px 20px;
   border:none;
-  border-radius:6px;
-  cursor:pointer;
+  border-radius:12px;
+  background:var(--gradient);
+  color:#fff;
   font-weight:600;
+  cursor:pointer;
 }
-.btn-close-inv{background:#4f46e5;color:#fff}
-.btn-download{background:#10b981;color:#fff}
 </style>
 </head>
 
 <body>
-
 <div class="container">
-<img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" class="logo-img">
+<img class="logo-img" src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png">
 
 <h2>Enrollment Summary</h2>
-<p class="sub-text">Review details and generate invoice</p>
+<p class="sub-text">Please review your details</p>
 
 <div class="details-box">
-  <div class="detail-row"><span class="label">Email:</span><span class="value" id="displayEmail"></span></div>
-  <div class="detail-row"><span class="label">Course:</span><span class="value" id="displayCourse"></span></div>
-  <div class="detail-row"><span class="label">Total:</span><span class="value" id="displayPrice"></span></div>
+  <div class="detail-row"><span class="label">Email</span><span class="value" id="displayEmail">...</span></div>
+  <div class="detail-row"><span class="label">Course</span><span class="value" id="displayCourse">...</span></div>
+  <div class="detail-row"><span class="label">Total</span><span class="value" id="displayPrice">$0</span></div>
 </div>
 
 <input type="hidden" id="method" value="Ecocash">
 
 <div class="payment-grid">
   <div class="payment-card active" onclick="selectPayment('Ecocash',this)">
-    <img src="https://i.imgur.com/0v5ZJ1N.png">
+    <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhCOPxJALDl8rinCr4j5gKvHQCpFn5RjSNX4o2ZgKZdus_g_naLRz35VcSQknCqVYUWWrhpmE_f3OOPgnjByqIM4JFYeB_0ZKCQxlRgesgK5PoPxo4JjacOmrmyTXpzf-bAfc6ZEt8_88LFQZEEUN1p9yb-zdoqKA8UrGntxMjWrC6dcYZQi0rK3i27jDOa/s1600/EcoCash%20%281%29.png">
   </div>
   <div class="payment-card" onclick="selectPayment('Bank Transfer',this)">
-    <img src="https://i.imgur.com/r5x3FfZ.png">
+    <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEitQyz359bQN-qUKKbaBPz0pEF11jeXScTl4rmkmeWpLqLFnm42tZ6eolAZJVx1kdGxo8gxgtLKPWOJZ1l4A_yr3HQXk4gar_xvwrQg6UXRQBzfzmN4b4wNsvbdmrK8_56qX2p1vAQFckXv-S2e-6C78GtoLe1T3J156Pq8kz17imMQX8SjF9CSpl4Txujj/s1600/%5BCITYPNG.COM%5DMasterCard%20&%20Visa%20Cards%20Logos%20Icons%20-%201500x1500.png">
   </div>
   <div class="payment-card" onclick="selectPayment('One Money',this)">
-    <img src="https://i.imgur.com/GpJkLKg.png">
+    <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgBFwR6y4tJP-_NQ_l2TspkmOZOd4c4lHPbTjhqdD_r68NAdzPTZxjW7Ns1ZcMQMch1b8yd1HMzcw7EKkdyJDxUwfNgsdRDZJnMy16a2ldFRV95MOsiqelfNMlsV9L_dXgow0019mQ9uNa6DTSYGYCB6xYXVhaur-1AGfnqalmHqesEG0z-XViwC81MwON1/s1600/2d0d78c7-f8c3-4169-8a6c-81b036eb2796.jpg">
   </div>
 </div>
 
-<button class="main-btn" id="payBtn" onclick="proceedPayment()">Generate Invoice</button>
+<button class="main-btn" onclick="proceedPayment()">Generate Invoice</button>
 </div>
 
-<!-- ================= INVOICE MODAL ================= -->
-<div id="invoice-modal-overlay">
-<div id="invoice-container">
-<div id="invoice-scroll-area">
-
-<div class="unpaid-stamp">UNPAID</div>
-
-<div class="inv-header">
-  <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png">
-  <div>
-    <h2>INVOICE</h2>
-    <div>Inv #: <span id="inv-num"></span></div>
-    <div>Date: <span id="inv-date"></span></div>
-    <div>Method: <span id="inv-method"></span></div>
-  </div>
-</div>
-
-<table class="inv-table">
-<tr><th>Description</th><th>Total</th></tr>
-<tr><td id="inv-course-name"></td><td id="inv-course-price"></td></tr>
-<tr class="inv-total-row"><td>Grand Total</td><td id="inv-final-total"></td></tr>
-</table>
-
-</div>
-
-<div class="inv-actions">
-<button class="inv-btn btn-close-inv" onclick="finish()">Finish</button>
-<button class="inv-btn btn-download" onclick="downloadPDF()">Download PDF</button>
-</div>
-</div>
-</div>
-
-<!-- ================= FIREBASE ================= -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-firebase.initializeApp({
+const firebaseConfig={
   apiKey:"AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
   authDomain:"students-login-29409.firebaseapp.com",
   projectId:"students-login-29409"
-});
+};
+firebase.initializeApp(firebaseConfig);
 const db=firebase.firestore();
 
-const params=new URLSearchParams(location.search);
-const courseName=params.get("name")||localStorage.courseName;
-const coursePrice=params.get("price")||localStorage.coursePrice;
-
+const params=new URLSearchParams(window.location.search);
+const courseName=params.get("name")||localStorage.getItem("courseName");
+const coursePrice=params.get("price")||localStorage.getItem("coursePrice");
 let studentEmail="";
 
-document.getElementById("displayCourse").textContent=courseName;
-document.getElementById("displayPrice").textContent="$"+coursePrice;
-
-firebase.auth().onAuthStateChanged(user=>{
-  if(!user){location.href="index.html";return;}
+firebase.auth().onAuthStateChanged(async user=>{
+  if(!user){window.location.href="index.html";return;}
   studentEmail=user.email;
-  document.getElementById("displayEmail").textContent=studentEmail;
-  checkExistingInvoice();
+
+  displayEmail.textContent=studentEmail;
+  displayCourse.textContent=courseName;
+  displayPrice.textContent="$"+coursePrice;
+
+  const courseRef=db.collection("enrollments")
+    .doc(studentEmail)
+    .collection("courses")
+    .doc(courseName);
+
+  const snap=await courseRef.get();
+
+  if(snap.exists){
+    window.location.href="student.html";
+    return;
+  }
+
   document.body.classList.add("loaded");
 });
 
-function checkExistingInvoice(){
-  db.collection("enrollments").doc(studentEmail).get().then(doc=>{
-    if(!doc.exists) return;
-    const c=doc.data().courses?.[courseName];
-    if(c){
-      openInvoice(c);
-      document.getElementById("payBtn").disabled=true;
-    }
-  });
-}
-
-function proceedPayment(){
-  document.getElementById("payBtn").disabled=true;
-
-  const inv="FBA-"+Math.floor(100000+Math.random()*900000);
-  const data={
-    status:"pending",
-    invoiceNumber:inv,
-    price:coursePrice,
-    method:document.getElementById("method").value,
-    createdAt:firebase.firestore.FieldValue.serverTimestamp()
-  };
-
-  db.collection("enrollments").doc(studentEmail).set({
-    courses:{[courseName]:data}
-  },{merge:true}).then(()=>openInvoice(data));
-}
-
-function openInvoice(c){
-  document.getElementById("inv-num").textContent=c.invoiceNumber;
-  document.getElementById("inv-date").textContent=new Date().toLocaleDateString();
-  document.getElementById("inv-method").textContent=c.method;
-  document.getElementById("inv-course-name").textContent=courseName;
-  document.getElementById("inv-course-price").textContent="$"+coursePrice;
-  document.getElementById("inv-final-total").textContent="$"+coursePrice;
-  document.getElementById("invoice-modal-overlay").style.display="flex";
-}
-
-function finish(){location.href="courses.html"}
-
-function downloadPDF(){
-  html2pdf().from(document.getElementById("invoice-scroll-area")).save();
-}
-
-function selectPayment(m,el){
-  document.getElementById("method").value=m;
+function selectPayment(method,el){
+  document.getElementById("method").value=method;
   document.querySelectorAll(".payment-card").forEach(c=>c.classList.remove("active"));
   el.classList.add("active");
 }
-</script>
 
+async function proceedPayment(){
+  const method=document.getElementById("method").value;
+  const courseRef=db.collection("enrollments")
+    .doc(studentEmail)
+    .collection("courses")
+    .doc(courseName);
+
+  const snap=await courseRef.get();
+  if(snap.exists){
+    window.location.href="student.html";
+    return;
+  }
+
+  const invoiceNumber="FBA-"+Math.floor(100000+Math.random()*900000);
+
+  await courseRef.set({
+    status:"pending",
+    invoiceNumber:invoiceNumber,
+    paymentMethod:method,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  window.location.href="student.html";
+}
+</script>
 </body>
-    </html>
+                            </html>
