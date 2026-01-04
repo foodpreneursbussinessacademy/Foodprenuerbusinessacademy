@@ -2,129 +2,57 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Complete Enrollment - Food Business Academy</title>
+  <title>Student Details - Food Business Academy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
-    :root {
-      --primary: #4f46e5;
-      --bg: #f8fafc;
+    body{font-family:'Poppins',sans-serif;padding:20px;}
+    .form-container{max-width:500px;margin:auto;padding:20px;border-radius:8px;background:#f5f5f5;}
+    .form-container h2{text-align:center;margin-bottom:20px;}
+    .form-group{margin-bottom:15px;}
+    input[type="text"], input[type="email"], input[type="number"], button{
+      width:100%;padding:10px;margin-top:5px;border-radius:8px;border:1px solid #ddd;
     }
-    body { font-family: 'Outfit', sans-serif; background: var(--bg); display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-    
-    .form-container { 
-      width: 100%; max-width: 450px; background: white; padding: 40px; 
-      border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
-    }
-    
-    h2 { text-align: center; color: #1e1b4b; margin-bottom: 10px; }
-    p { text-align: center; color: #64748b; font-size: 0.9rem; margin-bottom: 30px; }
-    
-    .form-group { margin-bottom: 20px; }
-    label { display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 8px; }
-    
-    input {
-      width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0;
-      font-size: 1rem; box-sizing: border-box; transition: 0.3s;
-    }
-    input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
-    
-    button {
-      width: 100%; padding: 14px; background: var(--primary); color: white;
-      border: none; border-radius: 10px; font-weight: 600; font-size: 1rem;
-      cursor: pointer; margin-top: 10px; transition: 0.3s;
-    }
-    button:hover { background: #4338ca; }
-    button:disabled { background: #cbd5e1; cursor: not-allowed; }
+    button{background-color:#2563eb;color:white;border:none;cursor:pointer;}
+    button:hover{background-color:#6d28d9;}
   </style>
 </head>
 <body>
 
   <div class="form-container">
-    <h2>Student Details</h2>
-    <p>Please confirm your information to generate your official invoice.</p>
-    
+    <h2>Enter Your Details</h2>
     <form id="studentDetailsForm">
       <div class="form-group">
-        <label>Full Name</label>
-        <input type="text" id="studentName" required placeholder="e.g. John Doe">
+        <label for="studentName">Full Name</label>
+        <input type="text" id="studentName" required placeholder="Enter your full name">
       </div>
       <div class="form-group">
-        <label>Email Address</label>
-        <input type="email" id="studentEmail" readonly style="background: #f1f5f9;">
+        <label for="studentEmail">Email</label>
+        <input type="email" id="studentEmail" required placeholder="Enter your email">
       </div>
       <div class="form-group">
-        <label>WhatsApp / Phone Number</label>
-        <input type="text" id="studentPhone" required placeholder="e.g. +263 773...">
+        <label for="studentPhone">Phone Number</label>
+        <input type="number" id="studentPhone" required placeholder="Enter your phone number">
       </div>
-      <button type="submit" id="submitBtn">Generate Official Invoice</button>
+      <button type="submit">Proceed to Payment</button>
     </form>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getFirestore, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
-      authDomain: "students-login-29409.firebaseapp.com",
-      projectId: "students-login-29409"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const invoiceId = urlParams.get('invoiceId');
-
-    // 1. Check Auth and Pre-fill Email
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        document.getElementById('studentEmail').value = user.email;
-        if (!invoiceId) {
-          alert("Error: No invoice context found. Returning to courses.");
-          window.location.href = "student.html";
-        }
-      } else {
-        window.location.href = "login.html";
-      }
-    });
-
-    // 2. Handle Form Submission
-    document.getElementById('studentDetailsForm').addEventListener('submit', async function(event){
+  <script>
+    document.getElementById('studentDetailsForm').addEventListener('submit', function(event){
       event.preventDefault();
-      const btn = document.getElementById('submitBtn');
-      btn.disabled = true;
-      btn.innerText = "Generating...";
+      
+      const studentName = document.getElementById('studentName').value;
+      const studentEmail = document.getElementById('studentEmail').value;
+      const studentPhone = document.getElementById('studentPhone').value;
 
-      const name = document.getElementById('studentName').value;
-      const phone = document.getElementById('studentPhone').value;
+      // Store student details in localStorage
+      localStorage.setItem('studentName', studentName);
+      localStorage.setItem('studentEmail', studentEmail);
+      localStorage.setItem('studentPhone', studentPhone);
 
-      try {
-        // Update the existing "pending" document in Firebase with the student's real name and phone
-        const docRef = doc(db, "payments", invoiceId);
-        await updateDoc(docRef, {
-          studentName: name,
-          phone: phone,
-          updatedAt: new Date()
-        });
-
-        // Store in local storage as well for backup
-        localStorage.setItem('studentName', name);
-        localStorage.setItem('studentPhone', phone);
-
-        // SUCCESS: Redirect to the PREVIEW / INVOICE DISPLAY page
-        // Use the same invoiceId so the preview page knows which one to show
-        window.location.href = `payment-preview.html?invoiceId=${invoiceId}`;
-
-      } catch (error) {
-        console.error("Error updating details:", error);
-        alert("Something went wrong. Please try again.");
-        btn.disabled = false;
-        btn.innerText = "Generate Official Invoice";
-      }
+      // Redirect to the payment preview page
+      window.location.href = 'payment-preview.html?courseName=' + localStorage.getItem('courseName') + '&coursePrice=' + localStorage.getItem('coursePrice');
     });
   </script>
 </body>
