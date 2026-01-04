@@ -506,7 +506,7 @@
             });
     }
 
-    // --- 7. DATABASE CHECK FOR DUPLICATE PAYMENT ---
+    // --- 7. DATABASE CHECK FOR DUPLICATE PAYMENT (SILENT) ---
     function checkEnrollmentAndRedirect(uid) {
         db.collection('students').doc(uid).get()
         .then((doc) => {
@@ -515,23 +515,23 @@
                 const enrolledCourses = data.enrolled_courses || [];
 
                 if (enrolledCourses.includes(courseId)) {
-                    // --- ALREADY PAID ---
-                    setBtnLoading(false); // Stop spinner
-                    showError("You have already purchased this course! Redirecting...", true); // Green Box
+                    // --- ALREADY PAID (SILENT REDIRECT) ---
+                    // 1. Keep "Verifying..." spinner active (Don't call setBtnSuccess or stop loading)
+                    // 2. Immediately redirect
+                    window.location.href = 'student.html';
                     
-                    setTimeout(() => {
-                        window.location.href = 'student.html';
-                    }, 2000);
                 } else {
                     // --- NOT PAID (New Purchase) ---
-                    setBtnSuccess(); // Show Success checkmark
+                    // 1. Show Success Animation to confirm login worked
+                    // 2. Redirect to Payment
+                    setBtnSuccess(); 
                     setTimeout(() => {
                         const target = `payment-preview.html?courseId=${courseId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
                         window.location.href = target;
                     }, 1000);
                 }
             } else {
-                // User document doesn't exist yet (safe to assume not paid)
+                // User document doesn't exist yet (New user safe assumption)
                 setBtnSuccess();
                 setTimeout(() => {
                     const target = `payment-preview.html?courseId=${courseId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
@@ -541,7 +541,7 @@
         })
         .catch((error) => {
             console.error("DB Error", error);
-            // Fallback: Proceed to payment if DB fails
+            // Fallback: Proceed to payment if DB fails, showing success animation first
             setBtnSuccess();
             setTimeout(() => {
                 const target = `payment-preview.html?courseId=${courseId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
