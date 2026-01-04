@@ -41,6 +41,14 @@ body {
     box-shadow: 0 20px 40px rgba(79, 70, 229, 0.15); 
     text-align: center;
     border-top: 5px solid var(--secondary);
+    position: relative;
+}
+
+/* Loading Overlay for the Card */
+#card-loader {
+    position: absolute; inset: 0; background: rgba(255,255,255,0.9);
+    z-index: 10; display: flex; align-items: center; justify-content: center;
+    border-radius: 20px; font-weight: 600; color: var(--primary);
 }
 
 .logo-img {
@@ -135,8 +143,9 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     transition: transform 0.2s;
 }
 .main-btn:hover { transform: translateY(-2px); }
+.main-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
 
-/* --- 2. INVOICE MODAL STYLES (From Reference) --- */
+/* --- 2. INVOICE MODAL STYLES --- */
 #invoice-modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.8); z-index: 100000;
@@ -202,7 +211,6 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 .btn-download { background: #28a745; color: #fff; display: flex; align-items: center; gap: 5px;}
 .btn-download:hover { background: #218838; }
 
-/* Responsive Invoice */
 @media (max-width: 480px) {
     #invoice-scroll-area { padding: 20px; }
     .inv-header { flex-direction: column; align-items: center; text-align: center; gap: 15px; }
@@ -215,6 +223,8 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 <body>
 
 <div class="container">
+  <div id="card-loader">Fetching Invoice Details...</div>
+
   <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" alt="Logo" class="logo-img">
   
   <h2>Enrollment Summary</h2>
@@ -250,7 +260,10 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     </div>
   </div>
 
-  <button type="button" class="main-btn" onclick="proceedPayment()">Generate Invoice & Pay</button>
+  <button type="button" id="payBtn" class="main-btn" onclick="proceedPayment()" disabled>Generate Invoice & Pay</button>
+  <p style="margin-top:15px; font-size:13px; color:#666;">
+     <a href="courses.html" style="color:var(--secondary); text-decoration:none;">Cancel and return to courses</a>
+  </p>
 </div>
 
 <div id="invoice-modal-overlay">
@@ -273,7 +286,8 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
         </div>
 
         <div style="margin-bottom: 20px;">
-           <strong>Bill To:</strong> <span id="inv-student-name">Student Name</span>
+           <strong>Bill To:</strong> <span id="inv-student-name">...</span><br>
+           <small id="inv-student-email" style="color:#666;"></small>
         </div>
 
         <table class="inv-table">
@@ -334,85 +348,141 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
   </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-<script>
-// --- 1. CONFIGURATION ---
+/* --- 1. FIREBASE CONFIG --- */
 const firebaseConfig = {
   apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
   authDomain: "students-login-29409.firebaseapp.com",
-  projectId: "students-login-29409"
+  projectId: "students-login-29409",
+  storageBucket: "students-login-29409.firebasestorage.app",
+  messagingSenderId: "634331456872",
+  appId: "1:634331456872:web:6dae360c5e28d8356562dd",
+  measurementId: "G-96XXYG1VR2"
 };
-firebase.initializeApp(firebaseConfig);
 
-// --- 2. GET DATA FROM URL OR STORAGE ---
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* --- 2. GLOBAL VARIABLES --- */
 const urlParams = new URLSearchParams(window.location.search);
-const courseName = urlParams.get('name') || localStorage.getItem("courseName") || "N/A";
-const coursePrice = urlParams.get('price') || localStorage.getItem("coursePrice") || "0.00";
-let studentName = "Student";
-let studentEmail = "";
+const invoiceId = urlParams.get('invoiceId');
+let paymentData = null; // Store fetched data here
 
-// Fill Main Display Data
-document.getElementById("displayCourse").textContent = courseName;
-document.getElementById("displayPrice").textContent = "$" + coursePrice;
+/* --- 3. FETCH DATA LOGIC --- */
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
 
-// --- 3. FIREBASE AUTH CHECK ---
-firebase.auth().onAuthStateChanged((user) => {
-  if (user) {
-    studentEmail = user.email;
-    document.getElementById("displayEmail").textContent = studentEmail;
-    studentName = localStorage.getItem("studentName") || "Student";
-  } else {
-    window.location.href = "index.html";
+  if (!invoiceId) {
+    alert("No invoice ID provided. Redirecting to courses.");
+    window.location.href = "courses.html";
+    return;
+  }
+
+  try {
+    // FETCH DIRECTLY FROM FIREBASE (Restoring your logic)
+    const docRef = doc(db, "payments", invoiceId);
+    const docSnap = await getDoc(docRef);
+
+    if (docSnap.exists()) {
+      paymentData = docSnap.data();
+      
+      // Check if user matches
+      if (paymentData.studentId !== user.uid) {
+        alert("Unauthorized access to this invoice.");
+        window.location.href = "courses.html";
+        return;
+      }
+
+      // Populate UI
+      document.getElementById("displayEmail").textContent = paymentData.email;
+      document.getElementById("displayCourse").textContent = paymentData.courseName;
+      document.getElementById("displayPrice").textContent = "$" + paymentData.price;
+      
+      // Remove Loader & Enable Button
+      document.getElementById("card-loader").style.display = "none";
+      document.getElementById("payBtn").disabled = false;
+
+    } else {
+      alert("Invoice not found.");
+      window.location.href = "courses.html";
+    }
+  } catch (error) {
+    console.error("Error fetching invoice:", error);
+    alert("Error loading payment details.");
   }
 });
 
-// --- 4. VISUAL LOGIC ---
-function selectPayment(methodValue, cardElement) {
+/* --- 4. SELECTION LOGIC --- */
+window.selectPayment = (methodValue, cardElement) => {
     document.getElementById("method").value = methodValue;
     const cards = document.querySelectorAll('.payment-card');
     cards.forEach(card => card.classList.remove('active'));
     cardElement.classList.add('active');
 }
 
-function proceedPayment(){
+/* --- 5. PROCESS PAYMENT & SHOW MODAL --- */
+window.proceedPayment = async () => {
+  if (!paymentData) return;
+
   const method = document.getElementById("method").value;
-  const invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000); // Random 6 digit ID
-  const dateStr = new Date().toLocaleDateString();
-
-  /* Update Local Status */
-  const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
-  if(!statusData[studentEmail]) statusData[studentEmail] = {};
-  statusData[studentEmail][courseName] = "pending";
-  localStorage.setItem("courseStatus", JSON.stringify(statusData));
-
-  // --- POPULATE INVOICE MODAL ---
-  document.getElementById("inv-num").textContent = invNumber;
-  document.getElementById("inv-date").textContent = dateStr;
-  document.getElementById("inv-method").textContent = method;
-  document.getElementById("inv-student-name").textContent = studentName;
+  const payBtn = document.getElementById("payBtn");
   
-  // Table Data
-  document.getElementById("inv-course-name").textContent = courseName;
-  document.getElementById("inv-course-price").textContent = "$" + coursePrice;
-  document.getElementById("inv-final-total").textContent = "$" + coursePrice;
+  // Disable button to prevent double clicks
+  payBtn.textContent = "Updating Record...";
+  payBtn.disabled = true;
 
-  // Show Modal
-  document.getElementById("invoice-modal-overlay").style.display = "flex";
+  try {
+    // UPDATE FIREBASE WITH SELECTED METHOD
+    // Note: 'status' is already 'pending' from courses.html
+    const docRef = doc(db, "payments", invoiceId);
+    await updateDoc(docRef, {
+      paymentMethod: method,
+      updatedAt: new Date()
+    });
+
+    // POPULATE INVOICE MODAL
+    document.getElementById("inv-num").textContent = paymentData.invoiceNumber; // Use ID from Firestore
+    document.getElementById("inv-date").textContent = new Date().toLocaleDateString();
+    document.getElementById("inv-method").textContent = method;
+    document.getElementById("inv-student-name").textContent = paymentData.studentName;
+    document.getElementById("inv-student-email").textContent = paymentData.email;
+    
+    // Table Data
+    document.getElementById("inv-course-name").textContent = paymentData.courseName;
+    document.getElementById("inv-course-price").textContent = "$" + paymentData.price;
+    document.getElementById("inv-final-total").textContent = "$" + paymentData.price;
+
+    // Show Modal
+    document.getElementById("invoice-modal-overlay").style.display = "flex";
+
+  } catch (error) {
+    console.error("Error updating payment:", error);
+    alert("Failed to update payment method. Please try again.");
+  } finally {
+    payBtn.textContent = "Generate Invoice & Pay";
+    payBtn.disabled = false;
+  }
 }
 
-function closeInvoice() {
+window.closeInvoice = () => {
   document.getElementById("invoice-modal-overlay").style.display = "none";
 }
 
-// --- 5. DOWNLOAD PDF (Using html2pdf.js) ---
-function downloadPDF(){
+/* --- 6. DOWNLOAD PDF --- */
+window.downloadPDF = () => {
   const element = document.getElementById('invoice-content');
   const invNum = document.getElementById("inv-num").textContent;
   
   const opt = {
-      margin:       0.5,
+      margin:       0.3,
       filename:     `Invoice-${invNum}.pdf`,
       image:        { type: 'jpeg', quality: 0.98 },
       html2canvas:  { scale: 2 },
