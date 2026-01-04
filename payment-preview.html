@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Payment Preview - Food Business Academy</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -9,125 +9,117 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{
-  font-family:'Poppins',sans-serif;
-  background:#f4f6fb;
-  padding:20px;
-}
-.container{
-  max-width:480px;
-  margin:auto;
-  background:#fff;
-  padding:20px;
-  border-radius:16px;
-  box-shadow:0 8px 25px rgba(0,0,0,0.08);
-}
-h2{text-align:center;margin-bottom:15px;}
-p{margin:6px 0;font-size:14px;}
+body{ font-family:'Poppins',sans-serif; background:#f4f6fb; padding:20px; }
+.container{ max-width:480px; margin:auto; background:#fff; padding:30px; border-radius:16px; box-shadow:0 8px 25px rgba(0,0,0,0.08); }
+h2{text-align:center; margin-bottom:15px; color: #1e3a8a;}
+p{margin:10px 0; font-size:15px; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px;}
+strong { color: #4b5563; }
 
-select,button{
-  width:100%;
-  padding:12px;
-  margin-top:12px;
-  border-radius:10px;
-  border:1px solid #ddd;
-}
-button{
-  background:#2563eb;
-  color:#fff;
-  font-weight:600;
-  border:none;
-  cursor:pointer;
-}
-button:hover{background:#6d28d9}
+select,button{ width:100%; padding:14px; margin-top:15px; border-radius:10px; border:1px solid #ddd; font-size: 16px; }
+button{ background:#2563eb; color:#fff; font-weight:600; border:none; cursor:pointer; transition: 0.3s; }
+button:hover{background:#6d28d9; transform: translateY(-2px);}
 
-#invoicePopup{
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.6);
-  z-index:9999;
-}
-#invoiceBox{
-  background:#fff;
-  max-width:420px;
-  margin:10% auto;
-  padding:20px;
-  border-radius:16px;
-}
-.greenBtn{background:#22c55e;}
-.blueBtn{background:#0ea5e9;}
+#invoicePopup{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:9999; overflow-y: auto; }
+#invoiceBox{ background:#fff; max-width:420px; margin:5% auto; padding:25px; border-radius:16px; }
+.greenBtn{background:#22c55e; margin-top: 10px;}
+.blueBtn{background:#0ea5e9; margin-top: 20px;}
+.instruction-box { background: #f9fafb; padding: 15px; border-radius: 10px; border: 1px dashed #cbd5e1; margin-top: 15px; font-size: 13px; }
 </style>
 </head>
 
 <body>
 
 <div class="container">
-  <h2>Payment Preview</h2>
+  <h2>Enrollment Summary</h2>
 
-  <p><strong>Name:</strong> <span id="name"></span></p>
-  <p><strong>Email:</strong> <span id="email"></span></p>
-  <p><strong>Course:</strong> <span id="course"></span></p>
-  <p><strong>Amount:</strong> $<span id="price"></span></p>
+  <p><strong>Name:</strong> <span id="displayName">Loading...</span></p>
+  <p><strong>Email:</strong> <span id="displayEmail">Loading...</span></p>
+  <p><strong>Course:</strong> <span id="displayCourse"></span></p>
+  <p><strong>Amount:</strong> <span id="displayPrice"></span></p>
 
+  <label style="font-size: 13px; color: #64748b;">Select Payment Method:</label>
   <select id="method">
     <option value="Ecocash">Ecocash</option>
     <option value="Bank Transfer">Bank Transfer</option>
     <option value="One Money">One Money</option>
   </select>
 
-  <button type="button" onclick="proceedPayment()">Proceed to Payment</button>
+  <button type="button" onclick="proceedPayment()">Generate Invoice & Proceed</button>
 </div>
 
-<!-- INVOICE POPUP -->
 <div id="invoicePopup">
   <div id="invoiceBox">
     <h3>Payment Invoice</h3>
-    <p><strong>Invoice No:</strong> <span id="invoiceNo"></span></p>
+    <p style="border:none;"><strong>Invoice No:</strong> <span id="invoiceNo"></span></p>
 
-    <p id="invoiceDetails"></p>
+    <div id="invoiceDetails" style="text-align: left; margin: 15px 0;"></div>
 
-    <p><strong>Payment Instructions</strong></p>
-    <p>
-      🏦 Bank: CBZ / FBC<br>
+    <div class="instruction-box">
+      <strong>Payment Instructions:</strong><br>
+      🏦 Bank: CBZ / FBC (Academy Acct)<br>
       💰 Ecocash: 0773371163<br>
       📱 One Money: 0718625498<br>
-      📌 Reference: Invoice Number
-    </p>
+      📌 <strong>Reference:</strong> Use Invoice Number above
+    </div>
 
-    <button class="blueBtn" onclick="downloadPDF()">Download Invoice PDF</button>
-    <button class="greenBtn" onclick="goBack()">Back to Courses</button>
+    <button class="blueBtn" onclick="downloadPDF()">Download PDF Invoice</button>
+    <button class="greenBtn" onclick="goBack()">Return to Dashboard</button>
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
 <script>
-const name  = localStorage.getItem("studentName") || "";
-const email = localStorage.getItem("studentEmail") || "";
+// --- 1. CONFIGURATION ---
+const firebaseConfig = {
+  apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+  authDomain: "students-login-29409.firebaseapp.com",
+  projectId: "students-login-29409"
+};
+firebase.initializeApp(firebaseConfig);
 
-const course = localStorage.getItem("courseName") || "";
-const price  = localStorage.getItem("coursePrice") || "";
-
+// --- 2. GET DATA FROM URL (Blogger) OR LOCALSTORAGE ---
+const urlParams = new URLSearchParams(window.location.search);
+const courseName = urlParams.get('name') || localStorage.getItem("courseName") || "N/A";
+const coursePrice = urlParams.get('price') || localStorage.getItem("coursePrice") || "0.00";
 const invoiceNumber = "FBA-" + Date.now();
 
-document.getElementById("name").textContent = name;
-document.getElementById("email").textContent = email;
-document.getElementById("course").textContent = course;
-document.getElementById("price").textContent = price;
+// Fill Course Data
+document.getElementById("displayCourse").textContent = courseName;
+document.getElementById("displayPrice").textContent = "$" + coursePrice;
 document.getElementById("invoiceNo").textContent = invoiceNumber;
 
+// --- 3. GET LOGGED IN STUDENT DATA ---
+firebase.auth().onAuthStateChanged((user) => {
+  if (user) {
+    // We use the Email from Firebase as the source of truth
+    document.getElementById("displayEmail").textContent = user.email;
+    // Name is usually stored in LocalStorage from the signup/login form
+    document.getElementById("displayName").textContent = localStorage.getItem("studentName") || "Student";
+  } else {
+    // If not logged in, they shouldn't be here
+    window.location.href = "index.html";
+  }
+});
+
 function proceedPayment(){
-  /* STORE COURSE STATUS */
+  const name = document.getElementById("displayName").textContent;
+  const email = document.getElementById("displayEmail").textContent;
+  const method = document.getElementById("method").value;
+
+  /* Update Local Status */
   const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
   if(!statusData[email]) statusData[email] = {};
-  statusData[email][course] = "pending";
+  statusData[email][courseName] = "pending";
   localStorage.setItem("courseStatus", JSON.stringify(statusData));
 
   document.getElementById("invoiceDetails").innerHTML = `
-    <strong>Name:</strong> ${name}<br>
-    <strong>Email:</strong> ${email}<br>
-    <strong>Course:</strong> ${course}<br>
-    <strong>Amount:</strong> $${price}<br>
-    <strong>Status:</strong> Pending Payment
+    <strong>Student:</strong> ${name}<br>
+    <strong>Course:</strong> ${courseName}<br>
+    <strong>Amount:</strong> $${coursePrice}<br>
+    <strong>Method:</strong> ${method}<br>
+    <strong>Status:</strong> <span style="color:orange">Pending Confirmation</span>
   `;
 
   document.getElementById("invoicePopup").style.display = "block";
@@ -136,19 +128,33 @@ function proceedPayment(){
 function downloadPDF(){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text("Food Business Academy",20,20);
+  const name = document.getElementById("displayName").textContent;
+
+  doc.setFontSize(20);
+  doc.setTextColor(30, 58, 138);
+  doc.text("Food Business Academy", 20, 25);
+  
+  doc.setDrawColor(200, 200, 200);
+  doc.line(20, 30, 190, 30);
+
   doc.setFontSize(12);
-  doc.text(`Invoice No: ${invoiceNumber}`,20,35);
-  doc.text(`Name: ${name}`,20,45);
-  doc.text(`Course: ${course}`,20,55);
-  doc.text(`Amount: $${price}`,20,65);
-  doc.text("Status: Pending Payment",20,80);
-  doc.save(`${invoiceNumber}.pdf`);
+  doc.setTextColor(0, 0, 0);
+  doc.text(`Invoice Number: ${invoiceNumber}`, 20, 45);
+  doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 55);
+  doc.text(`Student Name: ${name}`, 20, 65);
+  doc.text(`Enrolled Course: ${courseName}`, 20, 75);
+  doc.text(`Total Amount: $${coursePrice}`, 20, 85);
+  
+  doc.setFillColor(245, 245, 245);
+  doc.rect(20, 95, 170, 30, 'F');
+  doc.text("Payment Instructions:", 25, 105);
+  doc.text("Pay via Ecocash 0773371163 or Bank Transfer.", 25, 115);
+
+  doc.save(`Invoice_${invoiceNumber}.pdf`);
 }
 
 function goBack(){
-  window.location.href = "courses.html";
+  window.location.href = "student.html"; // Redirect to dashboard
 }
 </script>
 
