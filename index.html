@@ -486,14 +486,14 @@
                 return auth.signInWithEmailAndPassword(email, password);
             })
             .then((userCredential) => {
-                // Login Successful
+                // Login Successful, now decide where to go
                 const user = userCredential.user;
                 
                 if (courseId) {
-                    // Check Database for duplicates
+                    // Coming from Blogger -> Check Database for duplicates
                     checkEnrollmentAndRedirect(user.uid);
                 } else {
-                    // Regular Login -> Dashboard
+                    // Regular Login -> Animate Success and go to Dashboard
                     setBtnSuccess();
                     setTimeout(() => {
                         window.location.href = 'student.html';
@@ -508,9 +508,9 @@
 
     // --- 7. DATABASE CHECK FOR DUPLICATE PAYMENT ---
     function checkEnrollmentAndRedirect(uid) {
-        // --- TEXT CHANGE: Set the button text specifically here ---
-        const btnTextEl = document.getElementById('loginBtnText');
-        if(btnTextEl) btnTextEl.innerText = "Fetching payment details...";
+        
+        // ** CHANGE: Update button text immediately when checks start **
+        document.getElementById('loginBtnText').innerText = "Fetching payment details...";
 
         db.collection('students').doc(uid).get()
         .then((doc) => {
@@ -519,23 +519,19 @@
                 const enrolledCourses = data.enrolled_courses || [];
 
                 if (enrolledCourses.includes(courseId)) {
-                    // --- ALREADY PAID ---
-                    // 1. Success State
-                    setBtnSuccess(); 
-                    
-                    // 2. SILENT REDIRECT to STUDENT.HTML (Dashboard)
-                    // No text, No alerts, No delay.
+                    // --- ALREADY PAID (SILENT REDIRECT) ---
+                    // ** CHANGE: Removed showError and Timeout. Redirects silently & immediately. **
                     window.location.href = 'student.html';
                 } else {
                     // --- NOT PAID (New Purchase) ---
-                    setBtnSuccess(); 
+                    setBtnSuccess(); // Show Success checkmark
                     setTimeout(() => {
                         const target = `payment-preview.html?courseId=${courseId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
                         window.location.href = target;
                     }, 1000);
                 }
             } else {
-                // User document doesn't exist yet (New Student)
+                // User document doesn't exist yet (safe to assume not paid)
                 setBtnSuccess();
                 setTimeout(() => {
                     const target = `payment-preview.html?courseId=${courseId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
