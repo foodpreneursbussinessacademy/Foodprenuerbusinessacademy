@@ -248,16 +248,27 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// --- HELPER: Get Params from URL or LocalStorage ---
+const getParam = (key) => {
+    const urlVal = new URLSearchParams(window.location.search).get(key);
+    if (urlVal) return urlVal;
+    // Fallback to LocalStorage (Case sensitive check)
+    if (key === 'courseName') return localStorage.getItem('courseName');
+    if (key === 'price') return localStorage.getItem('coursePrice');
+    if (key === 'courseId') return localStorage.getItem('courseId');
+    return null;
+};
+
 // Global State
 let currentInvoiceId = new URLSearchParams(window.location.search).get('invoiceId');
 let courseData = {
-    name: new URLSearchParams(window.location.search).get('courseName'),
-    price: new URLSearchParams(window.location.search).get('price'),
-    id: new URLSearchParams(window.location.search).get('courseId')
+    name: getParam('courseName'),
+    price: getParam('price'),
+    id: getParam('courseId') || "general-course"
 };
 let userData = {};
 
-// --- 1. MAIN LOGIC WITH STRICT REDIRECTION ---
+// --- 1. MAIN LOGIC START ---
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "login.html";
@@ -266,11 +277,12 @@ onAuthStateChanged(auth, async (user) => {
 
   userData.uid = user.uid;
   userData.email = user.email;
-
   const overlay = document.getElementById("scanning-overlay");
 
   try {
-    // A. If an Invoice ID exists in URL, Fetch and Validate
+    // ---------------------------------------------------------
+    // SCENARIO A: User has an Invoice ID in the URL
+    // ---------------------------------------------------------
     if (currentInvoiceId) {
         const docRef = doc(db, "payments", currentInvoiceId);
         const docSnap = await getDoc(docRef);
@@ -278,107 +290,103 @@ onAuthStateChanged(auth, async (user) => {
         if (docSnap.exists()) {
             const data = docSnap.data();
 
-            // Security Check: Is this MY invoice?
+            // 1. Security: Is this YOUR invoice?
             if (data.studentId !== user.uid) {
-                window.location.href = "student.html";
-                return;
+                console.warn("Unauthorized access to invoice.");
+                window.location.href = "student.html"; 
+                return; // STOP HERE
             }
 
-            // STRICT REDIRECTION: If Paid OR Pending -> Kick out
+            // 2. Status Check: Is it Paid or Pending?
             if (data.status === 'paid' || data.status === 'pending') {
-                console.warn("Invoice active/paid. Redirecting.");
-                window.location.href = "student.html";
-                return;
+                console.log("Invoice is " + data.status + ". Redirecting to Dashboard.");
+                window.location.href = "student.html"; 
+                return; // STOP HERE (Fixes the wrong redirect issue)
             }
 
-            // ENROLLMENT CHECK: Check User profile
-            const userRef = doc(db, "users", user.uid);
-            const userSnap = await getDoc(userRef);
-            if (userSnap.exists() && userSnap.data().enrolled_courses) {
-                if (userSnap.data().enrolled_courses.includes(data.courseId)) {
-                    window.location.href = "student.html";
-                    return;
-                }
-            }
-
-            // All checks passed. Load Data from DB.
+            // 3. Load data from DB to ensure accuracy
             courseData.name = data.courseName;
             courseData.price = data.price;
             courseData.id = data.courseId;
+            
+            // Proceed to render page...
         } else {
-            // Invoice ID in URL is invalid/deleted. Treat as NEW transaction.
-            console.log("Invoice ID invalid. Falling back to creation mode.");
-            currentInvoiceId = null; // Reset to force new generation
+            console.log("Invoice ID not found in DB. Treating as New User.");
+            currentInvoiceId = null; // Reset ID so we generate a new one
         }
     }
 
-    // B. If No Invoice ID (or invalid) -> Fallback to URL Params
-    // If we don't even have courseName from URL, we can't do anything.
+    // ---------------------------------------------------------
+    // SCENARIO B: New User (No Invoice ID or Invalid ID)
+    // ---------------------------------------------------------
+    
+    // Safety Check: Do we know what course they are buying?
     if (!courseData.name || !courseData.price) {
-        // alert("No course details found.");
+        console.error("Missing Course Data (Name or Price). Redirecting to Courses.");
+        alert("Error: Course details missing. Please select a course again.");
         window.location.href = "courses.html";
-        return;
+        return; // STOP HERE
     }
 
-    // Populate UI
+    // ---------------------------------------------------------
+    // RENDER UI
+    // ---------------------------------------------------------
     document.getElementById("displayEmail").textContent = user.email;
     document.getElementById("displayCourse").textContent = courseData.name;
     document.getElementById("displayPrice").textContent = "$" + courseData.price;
 
-    // HIDE OVERLAY only after all checks are done
+    // Hide Overlay (Success)
     overlay.style.opacity = "0";
     setTimeout(() => { overlay.style.display = "none"; }, 300);
 
   } catch (error) {
-    console.error("Error during init:", error);
-    // On critical error, fallback to student dashboard
+    console.error("Critical Error:", error);
+    alert("System Error. Redirecting to dashboard.");
     window.location.href = "student.html";
   }
 });
 
-// --- 2. SELECT METHOD ---
+// --- 2. PAYMENT SELECTION ---
 window.selectPayment = (methodValue, cardElement) => {
     document.getElementById("method").value = methodValue;
     document.querySelectorAll('.payment-card').forEach(c => c.classList.remove('active'));
     cardElement.classList.add('active');
 }
 
-// --- 3. PROCEED PAYMENT (GENERATE OR UPDATE) ---
+// --- 3. GENERATE INVOICE & PAY ---
 window.proceedPayment = async () => {
     const payBtn = document.getElementById("payBtn");
     payBtn.disabled = true;
-    payBtn.textContent = "Processing...";
+    payBtn.textContent = "Creating Record...";
 
     const method = document.getElementById("method").value;
     const dateStr = new Date().toLocaleDateString();
 
     try {
-        // If we don't have an invoice ID yet, Create one.
+        // If no ID exists, create a NEW one
         if (!currentInvoiceId) {
             currentInvoiceId = "INV-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
             
-            // USE setDoc to GUARANTEE creation
             await setDoc(doc(db, "payments", currentInvoiceId), {
                 studentId: userData.uid,
                 email: userData.email,
-                courseId: courseData.id || "unknown",
+                courseId: courseData.id,
                 courseName: courseData.name,
                 price: courseData.price,
-                status: "created", // Initial status, not pending yet
+                status: "created", // Status is just 'created', not pending yet
                 createdAt: new Date(),
                 paymentMethod: method,
                 invoiceNumber: currentInvoiceId
             });
-        } 
-        // If ID existed, just update method
-        else {
-             await updateDoc(doc(db, "payments", currentInvoiceId), {
+        } else {
+            // Update existing record
+            await updateDoc(doc(db, "payments", currentInvoiceId), {
                 paymentMethod: method,
                 updatedAt: new Date()
             });
         }
 
-        // Populate Modal
+        // Fill Modal Data
         document.getElementById("inv-num").textContent = currentInvoiceId;
         document.getElementById("inv-date").textContent = dateStr;
         document.getElementById("inv-method").textContent = method;
@@ -390,19 +398,21 @@ window.proceedPayment = async () => {
         document.getElementById("invoice-modal-overlay").style.display = "flex";
 
     } catch (e) {
-        console.error("Payment setup error:", e);
-        alert("Could not generate invoice. Please try again.");
+        console.error("Payment Error:", e);
+        alert("Could not generate invoice. check console.");
     } finally {
         payBtn.disabled = false;
         payBtn.textContent = "Generate Invoice & Pay";
     }
 }
 
-// --- 4. FINISH ---
+// --- 4. FINISH BUTTON ---
 window.finishAndRedirect = () => {
-    window.location.href = "student.html"; // Or courses.html based on pref
+    // This button now sends them to the Student Dashboard
+    window.location.href = "student.html"; 
 }
 
+// --- 5. PDF DOWNLOAD ---
 window.downloadPDF = () => {
   const element = document.getElementById('invoice-content');
   const invNum = document.getElementById("inv-num").textContent;
@@ -416,5 +426,3 @@ window.downloadPDF = () => {
 }
 </script>
 
-</body>
-</html>
