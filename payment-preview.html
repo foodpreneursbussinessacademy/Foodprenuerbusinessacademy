@@ -8,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
-/* --- 1. CORE VARIABLES --- */
+/* --- CORE STYLES --- */
 :root {
     --primary: #4f46e5;
     --secondary: #7c3aed;
@@ -24,28 +24,24 @@ body {
     min-height: 100vh; padding: 20px;
 }
 
-/* --- 2. SCANNING OVERLAY (The Blur Effect) --- */
+/* --- 1. SCANNING OVERLAY (CRITICAL) --- */
 #scanning-overlay {
     position: fixed; inset: 0;
-    background: rgba(243, 244, 246, 0.98);
-    backdrop-filter: blur(10px);
-    z-index: 9999;
+    background: rgba(243, 244, 246, 1); /* Opaque initially */
+    z-index: 99999; /* Highest priority */
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.5s ease;
 }
 .spinner {
     width: 50px; height: 50px;
-    border: 5px solid #ddd;
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 15px;
+    border: 5px solid #ddd; border-top-color: var(--primary);
+    border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px;
 }
 @keyframes spin { 100% { transform: rotate(360deg); } }
-.scan-text { font-weight: 600; color: var(--text-dark); }
+.scan-text { font-weight: 700; color: var(--text-dark); font-size: 18px; letter-spacing: 1px; }
 
-/* --- 3. MAIN CARD --- */
+/* --- MAIN CONTAINER --- */
 .container { 
     width: 100%; max-width: 500px; 
     background: var(--card-bg); 
@@ -55,12 +51,11 @@ body {
     text-align: center;
     border-top: 5px solid var(--secondary);
 }
-
 .logo-img { max-width: 150px; margin: 0 auto 20px auto; display: block; }
 h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 5px; }
 .sub-text { font-size: 14px; color: #6b7280; margin-bottom: 25px; }
 
-/* Details Box */
+/* Details */
 .details-box {
     background: #f9fafb; border-radius: 12px;
     padding: 20px; margin-bottom: 25px;
@@ -74,8 +69,8 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 .payment-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 25px; }
 .payment-card {
     background: #fff; border: 2px solid #e5e7eb; border-radius: 12px;
-    padding: 10px; cursor: pointer; transition: all 0.3s ease;
-    height: 80px; display: flex; align-items: center; justify-content: center;
+    padding: 5px; cursor: pointer; transition: all 0.3s ease;
+    height: 70px; display: flex; align-items: center; justify-content: center;
     position: relative; overflow: hidden;
 }
 .payment-card img { max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -89,15 +84,14 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     width: 100%; padding: 16px; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
     color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 600;
     cursor: pointer; box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
-    transition: transform 0.2s;
 }
-.main-btn:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+.main-btn:disabled { background: #9ca3af; cursor: not-allowed; }
 
-/* --- 4. INVOICE MODAL (THE POPUP) --- */
+/* --- INVOICE MODAL (POPUP) --- */
 #invoice-modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.85); z-index: 10000;
-    display: none; /* Hidden by default, toggled by JS */
+    display: none; /* Hidden by default */
     align-items: center; justify-content: center;
     backdrop-filter: blur(5px); padding: 20px;
 }
@@ -223,7 +217,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
       </div>
     </div>
     <div class="inv-actions">
-      <button class="inv-btn btn-finish" onclick="finishAndRedirect()">Finish & Return</button>
+      <button class="inv-btn btn-finish" onclick="finishAndRedirect()">Finish & Go to Dashboard</button>
       <button class="inv-btn btn-download" onclick="downloadPDF()">Download PDF</button>
     </div>
   </div>
@@ -247,27 +241,24 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Helper to get data from URL or Fallback
+// Helper
 const getParam = (key) => {
-    const urlVal = new URLSearchParams(window.location.search).get(key);
-    if (urlVal) return urlVal;
-    // Fallback to LocalStorage
-    if (key === 'courseName') return localStorage.getItem('courseName');
-    if (key === 'price') return localStorage.getItem('coursePrice');
-    if (key === 'courseId') return localStorage.getItem('courseId');
-    return null;
+    const val = new URLSearchParams(window.location.search).get(key);
+    if(val) return val;
+    return localStorage.getItem(key === 'courseName' ? 'courseName' : key === 'price' ? 'coursePrice' : key);
 };
 
-// State
+// Global State
 let currentInvoiceId = new URLSearchParams(window.location.search).get('invoiceId');
 let courseData = {
     name: getParam('courseName'),
     price: getParam('price'),
-    id: getParam('courseId') || "general-course"
+    id: getParam('courseId') || ("COURSE-" + Date.now())
 };
 let userData = {};
+const overlay = document.getElementById("scanning-overlay");
 
-// --- 1. INITIALIZATION & CHECKS ---
+// --- 1. MAIN LOGIC START ---
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     window.location.href = "login.html";
@@ -276,138 +267,138 @@ onAuthStateChanged(auth, async (user) => {
 
   userData.uid = user.uid;
   userData.email = user.email;
-  const overlay = document.getElementById("scanning-overlay");
 
-  try {
-    // SCENARIO A: Existing Invoice ID in URL
-    if (currentInvoiceId) {
+  // --- SCENARIO A: Invoice ID exists in URL ---
+  if (currentInvoiceId) {
+    try {
         const docRef = doc(db, "payments", currentInvoiceId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
             const data = docSnap.data();
 
-            // Security: Owner Check
+            // Check Ownership
             if (data.studentId !== user.uid) {
-                window.location.href = "student.html"; 
+                window.location.href = "student.html"; // Not your invoice
                 return;
             }
 
-            // REDIRECTION: If Paid OR Pending -> Go to Student Dashboard
+            // [attachment_0](attachment) - Check Status
+            // STRICT REDIRECT: If Paid or Pending -> GO TO DASHBOARD
             if (data.status === 'paid' || data.status === 'pending') {
+                console.log("Status is " + data.status + ". Redirecting...");
                 window.location.href = "student.html"; 
                 return; 
             }
 
-            // Sync Data
+            // If status is 'created', stay here. Sync data.
             courseData.name = data.courseName;
             courseData.price = data.price;
-            courseData.id = data.courseId;
         } else {
-            // Invoice ID in URL is bad. Reset to create new one.
-            currentInvoiceId = null; 
+            // Invoice ID in URL is invalid. Treat as new.
+            currentInvoiceId = null;
         }
+    } catch (e) {
+        console.error("Error reading invoice", e);
     }
-
-    // SCENARIO B: New User / Missing Invoice
-    if (!courseData.name || !courseData.price) {
-        alert("Course details missing. Redirecting to courses.");
-        window.location.href = "courses.html";
-        return;
-    }
-
-    // Render Page
-    document.getElementById("displayEmail").textContent = user.email;
-    document.getElementById("displayCourse").textContent = courseData.name;
-    document.getElementById("displayPrice").textContent = "$" + courseData.price;
-
-    // HIDE OVERLAY (Success)
-    overlay.style.opacity = "0";
-    setTimeout(() => { overlay.style.display = "none"; }, 300);
-
-  } catch (error) {
-    console.error("Init Error:", error);
-    window.location.href = "student.html";
   }
+
+  // --- SCENARIO B: No Invoice ID (New Generation) ---
+  if (!courseData.name || !courseData.price) {
+     alert("No course selected. Redirecting.");
+     window.location.href = "courses.html";
+     return;
+  }
+
+  // If we made it here, we are allowed to stay.
+  // Render Page
+  document.getElementById("displayEmail").textContent = user.email;
+  document.getElementById("displayCourse").textContent = courseData.name;
+  document.getElementById("displayPrice").textContent = "$" + courseData.price;
+
+  // REMOVE OVERLAY
+  overlay.style.opacity = "0";
+  setTimeout(() => { overlay.style.display = "none"; }, 500);
 });
 
-// --- 2. UI FUNCTIONS ---
-window.selectPayment = (methodValue, cardElement) => {
-    document.getElementById("method").value = methodValue;
+// --- UI HELPERS ---
+window.selectPayment = (method, el) => {
+    document.getElementById("method").value = method;
     document.querySelectorAll('.payment-card').forEach(c => c.classList.remove('active'));
-    cardElement.classList.add('active');
-}
+    el.classList.add('active');
+};
 
-// --- 3. INVOICE GENERATION LOGIC ---
+// --- 2. GENERATE INVOICE LOGIC ---
 window.proceedPayment = async () => {
     const payBtn = document.getElementById("payBtn");
     payBtn.disabled = true;
-    payBtn.textContent = "Creating Invoice...";
+    payBtn.textContent = "Generating...";
 
     const method = document.getElementById("method").value;
-    const dateStr = new Date().toLocaleDateString();
+    
+    // If we don't have an invoice ID yet, make one.
+    if (!currentInvoiceId) {
+        currentInvoiceId = "INV-" + Math.floor(100000 + Math.random() * 900000);
+    }
 
     try {
-        // Create NEW Invoice if none exists
-        if (!currentInvoiceId) {
-            currentInvoiceId = "INV-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
-            
-            await setDoc(doc(db, "payments", currentInvoiceId), {
-                studentId: userData.uid,
-                email: userData.email,
-                courseId: courseData.id,
-                courseName: courseData.name,
-                price: courseData.price,
-                status: "created", // 'created' allows user to see invoice. Not 'pending' yet.
-                createdAt: new Date(),
-                paymentMethod: method,
-                invoiceNumber: currentInvoiceId
-            });
-        } else {
-            // Update Existing
-            await updateDoc(doc(db, "payments", currentInvoiceId), {
-                paymentMethod: method,
-                updatedAt: new Date()
-            });
-        }
+        // 
+        // ALWAYS use setDoc with merge to ensure creation
+        await setDoc(doc(db, "payments", currentInvoiceId), {
+            invoiceNumber: currentInvoiceId,
+            studentId: userData.uid,
+            email: userData.email,
+            courseName: courseData.name,
+            price: courseData.price,
+            paymentMethod: method,
+            status: "created", // Keep as 'created' until they finish
+            createdAt: new Date()
+        }, { merge: true });
 
-        // --- POPULATE THE MODAL ---
+        // Populate Modal
         document.getElementById("inv-num").textContent = currentInvoiceId;
-        document.getElementById("inv-date").textContent = dateStr;
+        document.getElementById("inv-date").textContent = new Date().toLocaleDateString();
         document.getElementById("inv-method").textContent = method;
         document.getElementById("inv-course-name").textContent = courseData.name;
         document.getElementById("inv-course-price").textContent = "$" + courseData.price;
         document.getElementById("inv-final-total").textContent = "$" + courseData.price;
 
-        // --- SHOW THE MODAL ---
+        // Show Modal
         document.getElementById("invoice-modal-overlay").style.display = "flex";
 
-    } catch (e) {
-        console.error("Payment Error:", e);
-        alert("Error generating invoice. Check internet connection.");
+    } catch (error) {
+        console.error("Error creating invoice:", error);
+        alert("System Error: Could not generate invoice.");
     } finally {
         payBtn.disabled = false;
         payBtn.textContent = "Generate Invoice & Pay";
     }
-}
+};
 
-// --- 4. FINISH BUTTON LOGIC ---
-window.finishAndRedirect = () => {
-    // Redirect to Student Dashboard
-    window.location.href = "student.html"; 
-}
+// --- 3. FINISH LOGIC ---
+window.finishAndRedirect = async () => {
+    // Optional: Set status to 'pending' so next time they are redirected immediately
+    try {
+        if(currentInvoiceId) {
+             await updateDoc(doc(db, "payments", currentInvoiceId), {
+                status: "pending" 
+             });
+        }
+    } catch(e) { console.log("Update skip", e); }
+    
+    window.location.href = "student.html";
+};
 
 window.downloadPDF = () => {
   const element = document.getElementById('invoice-content');
   const invNum = document.getElementById("inv-num").textContent;
-  const opt = {
+  html2pdf().set({
       margin: 0.3, filename: `Invoice-${invNum}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-  };
-  html2pdf().set(opt).from(element).save();
-}
+  }).from(element).save();
+};
 </script>
 </body>
 </html>
