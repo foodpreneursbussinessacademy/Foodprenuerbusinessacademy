@@ -9,10 +9,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
-/* --- 1. MAIN PAGE STYLES (Glassmorphism & Purple/Blue Theme) --- */
+/* --- 1. MAIN PAGE STYLES --- */
 :root {
-    --primary: #4f46e5; /* Indigo */
-    --secondary: #7c3aed; /* Purple */
+    --primary: #4f46e5;
+    --secondary: #7c3aed;
     --gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
     --bg-color: #f3f4f6;
     --card-bg: #ffffff;
@@ -44,11 +44,12 @@ body {
     position: relative;
 }
 
-/* Loading Overlay for the Card */
+/* Loading Overlay */
 #card-loader {
-    position: absolute; inset: 0; background: rgba(255,255,255,0.9);
+    position: absolute; inset: 0; background: rgba(255,255,255,0.95);
     z-index: 10; display: flex; align-items: center; justify-content: center;
     border-radius: 20px; font-weight: 600; color: var(--primary);
+    flex-direction: column; gap: 10px;
 }
 
 .logo-img {
@@ -172,23 +173,50 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     to { transform: translateY(0); opacity: 1; }
 }
 
-#invoice-scroll-area { padding: 40px; overflow-y: auto; }
+#invoice-scroll-area { padding: 40px; overflow-y: auto; position: relative; }
+
+/* UNPAID STAMP */
+.unpaid-stamp {
+    position: absolute;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-20deg);
+    border: 5px solid #d93025;
+    color: #d93025;
+    font-size: 50px;
+    font-weight: 900;
+    padding: 10px 20px;
+    opacity: 0.2;
+    pointer-events: none;
+    letter-spacing: 5px;
+    z-index: 0;
+}
 
 /* Header */
-.inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+.inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; position: relative; z-index: 1;}
 .inv-logo img { height: 80px; width: auto; object-fit: contain; }
 .inv-title { text-align: right; }
 .inv-title h2 { margin: 0; color: #222; font-size: 32px; letter-spacing: 2px; }
 .inv-meta { margin-top: 10px; font-size: 14px; color: #666; }
 
+/* Status Text on Invoice Header */
+.status-badge {
+    color: red;
+    font-weight: 800;
+    font-size: 16px;
+    text-transform: uppercase;
+    display: block;
+    margin-top: 5px;
+}
+
 /* Table */
-.inv-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+.inv-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; position: relative; z-index: 1;}
 .inv-table th { text-align: left; background: #f8f9fa; padding: 12px; font-size: 12px; text-transform: uppercase; color: #555; border-bottom: 2px solid #ddd; }
 .inv-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; vertical-align: middle; }
 .inv-total-row td { border-top: 2px solid #333; font-weight: 700; font-size: 16px; color: #000; }
 
 /* Payment Boxes */
-.pay-box { background: #f0f7ff; border: 1px solid #cce5ff; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+.pay-box { background: #f0f7ff; border: 1px solid #cce5ff; border-radius: 8px; padding: 20px; margin-bottom: 20px; position: relative; z-index: 1;}
 .pay-header { font-weight: 700; color: #004085; margin-bottom: 10px; font-size: 15px; border-bottom: 1px solid #b8daff; padding-bottom: 5px; display: block; }
 .pay-details { font-size: 14px; line-height: 1.6; color: #333; }
 .pay-label { font-weight: 600; color: #555; min-width: 100px; display: inline-block; }
@@ -223,7 +251,9 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 <body>
 
 <div class="container">
-  <div id="card-loader">Fetching Invoice Details...</div>
+  <div id="card-loader">
+    <span>Fetching payment details...</span>
+  </div>
 
   <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" alt="Logo" class="logo-img">
   
@@ -271,23 +301,22 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     
     <div id="invoice-content">
       <div id="invoice-scroll-area">
+        
+        <div class="unpaid-stamp">UNPAID</div>
+
         <div class="inv-header">
           <div class="inv-logo">
-            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjxMsFTTcGbD2cXWdxIuETewXRpnOyFdmg6EyFu4z7veTIxf5dWbjRYvV-w8CYzay30IX9kkgbfwzgPkjQf64XZGTkmOTzak6LnjOgCL1o4kBvwZl0TRlH1bAS_KhsHCA9_5PsgppQQs9A2DR-ynbj3-DwfYS1gxCYzhRGVOliLI2BQs0s9PG3_oa4yzXjj/s1600/Lumii_20251221_225044758.png" alt="Company Logo" />
+            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" alt="Company Logo" />
           </div>
           <div class="inv-title">
             <h2>INVOICE</h2>
+            <div class="status-badge">UNPAID</div>
             <div class="inv-meta">
               <strong>Inv #:</strong> <span id="inv-num">Loading...</span><br />
               <strong>Date:</strong> <span id="inv-date">Loading...</span><br/>
               <strong>Method:</strong> <span id="inv-method">...</span>
             </div>
           </div>
-        </div>
-
-        <div style="margin-bottom: 20px;">
-           <strong>Bill To:</strong> <span id="inv-student-name">...</span><br>
-           <small id="inv-student-email" style="color:#666;"></small>
         </div>
 
         <table class="inv-table">
@@ -371,7 +400,7 @@ const db = getFirestore(app);
 /* --- 2. GLOBAL VARIABLES --- */
 const urlParams = new URLSearchParams(window.location.search);
 const invoiceId = urlParams.get('invoiceId');
-let paymentData = null; // Store fetched data here
+let paymentData = null; 
 
 /* --- 3. FETCH DATA LOGIC --- */
 onAuthStateChanged(auth, async (user) => {
@@ -380,28 +409,43 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
+  // PREVENT REDIRECT: If no invoiceId, just show error in the loader div.
   if (!invoiceId) {
-    alert("No invoice ID provided. Redirecting to courses.");
-    window.location.href = "courses.html";
+    document.getElementById("card-loader").innerHTML = "<span>Error: No Invoice ID provided.</span><br><small><a href='courses.html'>Go back to Courses</a></small>";
     return;
   }
 
   try {
-    // FETCH DIRECTLY FROM FIREBASE (Restoring your logic)
+    // 1. Fetch Payment Details using Invoice ID
     const docRef = doc(db, "payments", invoiceId);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
       paymentData = docSnap.data();
       
-      // Check if user matches
+      // Check for security: does this invoice belong to the logged-in user?
       if (paymentData.studentId !== user.uid) {
         alert("Unauthorized access to this invoice.");
         window.location.href = "courses.html";
         return;
       }
 
-      // Populate UI
+      // 2. SILENT REDIRECT CHECK
+      // Now that we know the courseId from paymentData, check if user is already enrolled
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        // Check if enrolled_courses array exists and includes this courseId
+        if (userData.enrolled_courses && userData.enrolled_courses.includes(paymentData.courseId)) {
+            // User has already paid/enrolled. Silent redirect.
+            window.location.href = 'student.html';
+            return; 
+        }
+      }
+
+      // 3. If NOT enrolled, Populate UI for Payment
       document.getElementById("displayEmail").textContent = paymentData.email;
       document.getElementById("displayCourse").textContent = paymentData.courseName;
       document.getElementById("displayPrice").textContent = "$" + paymentData.price;
@@ -411,12 +455,12 @@ onAuthStateChanged(auth, async (user) => {
       document.getElementById("payBtn").disabled = false;
 
     } else {
-      alert("Invoice not found.");
-      window.location.href = "courses.html";
+      // Invoice doesn't exist in DB
+      document.getElementById("card-loader").innerHTML = "<span>Invoice not found.</span><br><small><a href='courses.html'>Return to Courses</a></small>";
     }
   } catch (error) {
     console.error("Error fetching invoice:", error);
-    alert("Error loading payment details.");
+    document.getElementById("card-loader").textContent = "Error loading payment details.";
   }
 });
 
@@ -441,7 +485,6 @@ window.proceedPayment = async () => {
 
   try {
     // UPDATE FIREBASE WITH SELECTED METHOD
-    // Note: 'status' is already 'pending' from courses.html
     const docRef = doc(db, "payments", invoiceId);
     await updateDoc(docRef, {
       paymentMethod: method,
@@ -449,11 +492,10 @@ window.proceedPayment = async () => {
     });
 
     // POPULATE INVOICE MODAL
-    document.getElementById("inv-num").textContent = paymentData.invoiceNumber; // Use ID from Firestore
+    document.getElementById("inv-num").textContent = paymentData.invoiceNumber; 
     document.getElementById("inv-date").textContent = new Date().toLocaleDateString();
     document.getElementById("inv-method").textContent = method;
-    document.getElementById("inv-student-name").textContent = paymentData.studentName;
-    document.getElementById("inv-student-email").textContent = paymentData.email;
+    // Note: Removed Student Details mapping as requested
     
     // Table Data
     document.getElementById("inv-course-name").textContent = paymentData.courseName;
