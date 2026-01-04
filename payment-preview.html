@@ -29,7 +29,7 @@
       align-items: center;
       min-height: 100vh;
       padding: 20px;
-      opacity: 0; /* Hidden to prevent flash */
+      opacity: 0; 
       transition: opacity 0.5s ease;
     }
     body.loaded { opacity: 1; }
@@ -56,7 +56,6 @@
     h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 5px; }
     .sub-text { font-size: 14px; color: var(--text-light); margin-bottom: 25px; }
 
-    /* Details Box */
     .details-box {
       background: #f9fafb;
       border-radius: 12px;
@@ -76,7 +75,6 @@
     .detail-row span.label { color: var(--text-light); font-weight: 500; }
     .detail-row span.value { font-weight: 600; color: var(--primary); text-align: right; }
 
-    /* Payment Selection */
     .payment-grid {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
@@ -100,11 +98,7 @@
     }
 
     .payment-card img { max-width: 100%; max-height: 100%; object-fit: contain; }
-
-    .payment-card.active {
-      border-color: var(--secondary);
-      background: #f5f3ff;
-    }
+    .payment-card.active { border-color: var(--secondary); background: #f5f3ff; }
     .payment-card.active::after {
       content: '✔';
       position: absolute;
@@ -122,11 +116,6 @@
       font-weight: 600;
       cursor: pointer;
       box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
-    }
-    .main-btn:disabled {
-      background: #ccc;
-      cursor: not-allowed;
-      box-shadow: none;
     }
 
     /* --- INVOICE MODAL STYLES --- */
@@ -152,7 +141,6 @@
 
     #invoice-scroll-area { padding: 40px; overflow-y: auto; position: relative; }
 
-    /* UNPAID STAMP */
     .unpaid-stamp {
       position: absolute;
       top: 40%; left: 50%;
@@ -171,20 +159,17 @@
       font-family: 'Courier New', Courier, monospace;
     }
 
-    /* Header */
     .inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; position: relative; z-index: 1; }
     .inv-logo img { height: 80px; width: auto; object-fit: contain; }
     .inv-title { text-align: right; }
     .inv-title h2 { margin: 0; color: #222; font-size: 32px; letter-spacing: 2px; }
     .inv-meta { margin-top: 10px; font-size: 14px; color: #666; }
 
-    /* Table */
     .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; position: relative; z-index: 1; }
     .inv-table th { text-align: left; background: #f8f9fa; padding: 12px; font-size: 12px; text-transform: uppercase; color: #555; border-bottom: 2px solid #ddd; }
     .inv-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; vertical-align: middle; }
     .inv-total-row td { border-top: 2px solid #333; font-weight: 700; font-size: 16px; color: #000; }
 
-    /* Payment Boxes */
     .pay-box { background: #f0f7ff; border: 1px solid #cce5ff; border-radius: 8px; padding: 20px; margin-bottom: 20px; position: relative; z-index: 1; }
     .pay-header { font-weight: 700; color: #004085; margin-bottom: 10px; font-size: 15px; border-bottom: 1px solid #b8daff; padding-bottom: 5px; display: block; }
     .pay-details { font-size: 14px; line-height: 1.6; color: #333; }
@@ -195,7 +180,6 @@
 
     .inv-footer { text-align: center; font-size: 12px; color: #777; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; position: relative; z-index: 1; }
 
-    /* Invoice Actions */
     .inv-actions {
       background: #f1f1f1;
       padding: 15px 40px;
@@ -205,10 +189,7 @@
     }
     .inv-btn { padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 14px; }
     .btn-close-inv { background: #4f46e5; color: #fff; }
-    .btn-close-inv:hover { background: #4338ca; }
-
     .btn-download { background: #10b981; color: #fff; display: flex; align-items: center; gap: 5px;}
-    .btn-download:hover { background: #059669; }
   </style>
 </head>
 <body>
@@ -251,6 +232,7 @@
   <button type="button" id="payBtn" class="main-btn" onclick="proceedPayment()">Generate Invoice & Pay</button>
 </div>
 
+<!-- INVOICE MODAL -->
 <div id="invoice-modal-overlay">
   <div id="invoice-container">
     <div id="invoice-content">
@@ -319,11 +301,8 @@
     </div>
 
     <div class="inv-actions">
-      <button class="inv-btn btn-close-inv" onclick="finishAndRedirect()">Finish & Return to Courses</button>
-      <button class="inv-btn btn-download" onclick="downloadPDF()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-        Download PDF
-      </button>
+      <button class="inv-btn btn-close-inv" onclick="window.location.href='student.html'">Finish & Return</button>
+      <button class="inv-btn btn-download" onclick="downloadPDF()">Download PDF</button>
     </div>
   </div>
 </div>
@@ -340,62 +319,59 @@
     projectId: "students-login-29409"
   };
   
-  if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-  }
+  if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
   const db = firebase.firestore(); 
 
-  // --- 2. GET URL DATA ---
+  // --- 2. GET THE INVOICE ID FROM THE URL ---
   const urlParams = new URLSearchParams(window.location.search);
-  const courseName = urlParams.get('name') || localStorage.getItem("courseName");
-  const coursePrice = urlParams.get('price') || localStorage.getItem("coursePrice");
-  let studentEmail = "";
+  const invoiceId = urlParams.get('invoiceId');
 
-  // Show Data immediately
-  if(document.getElementById("displayCourse")) {
-    document.getElementById("displayCourse").textContent = courseName || "Loading...";
-    document.getElementById("displayPrice").textContent = "$" + (coursePrice || "0.00");
-  }
-
-  // --- 3. AUTH & CHECK EXISTING INVOICE ---
-  firebase.auth().onAuthStateChanged((user) => {
+  // --- 3. AUTH & DATABASE LOAD ---
+  firebase.auth().onAuthStateChanged(async (user) => {
     if (user) {
-      studentEmail = user.email;
-      document.getElementById("displayEmail").textContent = studentEmail;
-
-      // Safety Check: If no course name, go back
-      if (!courseName || courseName === "N/A" || !coursePrice) {
+      if (!invoiceId) {
+        alert("No invoice reference found. Returning to courses.");
         window.location.href = "student.html";
         return;
       }
 
-      // --- CRITICAL CHANGE: Check NEW Structure ---
-      // Path: payments -> studentEmail -> courses -> courseName
-      const coursePaymentRef = db.collection("payments").doc(studentEmail).collection("courses").doc(courseName);
+      // FETCH DATA FROM FIRESTORE
+      try {
+        const docRef = db.collection("payments").doc(invoiceId);
+        const docSnap = await docRef.get();
 
-      coursePaymentRef.get().then((doc) => {
-        if (doc.exists) {
-          // A document exists! This means an Invoice was already generated (pending or paid).
-          console.log("Invoice already exists. Redirecting...");
-          // Redirect immediately to prevent duplicate invoice
-          window.location.href = "student.html"; 
-        } else {
-          // No invoice found. Allow user to stay and generate one.
+        if (docSnap.exists) {
+          const data = docSnap.data();
+
+          // POPULATE THE PREVIEW UI
+          document.getElementById("displayEmail").textContent = data.email || user.email;
+          document.getElementById("displayCourse").textContent = data.courseName;
+          document.getElementById("displayPrice").textContent = "$" + data.price;
+          
+          // Populate Invoice Modal (hidden until button clicked)
+          document.getElementById("inv-num").textContent = data.invoiceNumber || invoiceId;
+          document.getElementById("inv-course-name").textContent = data.courseName;
+          document.getElementById("inv-course-price").textContent = "$" + data.price;
+          document.getElementById("inv-final-total").textContent = "$" + data.price;
+          
+          const dateObj = data.createdAt ? data.createdAt.toDate() : new Date();
+          document.getElementById("inv-date").textContent = dateObj.toLocaleDateString();
+
           document.body.classList.add('loaded');
+        } else {
+          alert("Invoice not found in database.");
+          window.location.href = "student.html";
         }
-      }).catch((error) => {
-        console.error("Error checking payment status:", error);
-        // On error (e.g., offline), we might show the page, but saving might fail later.
-        document.body.classList.add('loaded');
-      });
-
+      } catch (error) {
+        console.error("Error loading invoice:", error);
+        alert("Failed to load invoice details.");
+      }
     } else {
-      // Not logged in
       window.location.href = "index.html";
     }
   });
 
-  // --- 4. UI FUNCTIONS ---
+  // UI Selection
   function selectPayment(methodValue, cardElement) {
     document.getElementById("method").value = methodValue;
     const cards = document.querySelectorAll('.payment-card');
@@ -403,66 +379,15 @@
     cardElement.classList.add('active');
   }
 
-  // --- 5. GENERATE INVOICE & SAVE TO FIRESTORE ---
-  function proceedPayment(){
-    const btn = document.getElementById("payBtn");
-    btn.disabled = true; // Prevent double clicking
-    btn.textContent = "Processing...";
-
-    const method = document.getElementById("method").value;
-    const invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
-    const dateStr = new Date().toLocaleDateString();
-
-    if(studentEmail && courseName) {
-      
-      // Data to save in the NEW structure
-      const paymentData = {
-        status: "pending",
-        invoiceNumber: invNumber,
-        paymentMethod: method,
-        amount: coursePrice,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp() // Server time
-      };
-
-      // Path: payments/{studentEmail}/courses/{courseName}
-      db.collection("payments").doc(studentEmail).collection("courses").doc(courseName)
-        .set(paymentData)
-        .then(() => {
-          console.log("Invoice generated and saved to Firestore.");
-          
-          // --- POPULATE INVOICE MODAL ---
-          document.getElementById("inv-num").textContent = invNumber;
-          document.getElementById("inv-date").textContent = dateStr;
-          document.getElementById("inv-method").textContent = method;
-          document.getElementById("inv-course-name").textContent = courseName;
-          document.getElementById("inv-course-price").textContent = "$" + coursePrice;
-          document.getElementById("inv-final-total").textContent = "$" + coursePrice;
-
-          // SHOW MODAL
-          document.getElementById("invoice-modal-overlay").style.display = "flex";
-          btn.disabled = false;
-          btn.textContent = "Generate Invoice & Pay";
-        })
-        .catch((error) => {
-          console.error("Error saving invoice: ", error);
-          alert("Error generating invoice. Please try again.");
-          btn.disabled = false;
-          btn.textContent = "Generate Invoice & Pay";
-        });
-
-    } else {
-      alert("Missing user or course data.");
-      btn.disabled = false;
-    }
+  // --- 4. SHOW MODAL ---
+  function proceedPayment() {
+    // Show selected method on invoice
+    document.getElementById("inv-method").textContent = document.getElementById("method").value;
+    // Show Modal
+    document.getElementById("invoice-modal-overlay").style.display = "flex";
   }
 
-  // --- 6. FINISH & REDIRECT ---
-  function finishAndRedirect() {
-    // Redirect to courses page or dashboard
-    window.location.href = "student.html";
-  }
-
-  // --- 7. DOWNLOAD PDF ---
+  // --- 5. PDF DOWNLOAD ---
   function downloadPDF(){
     const element = document.getElementById('invoice-content');
     const invNum = document.getElementById("inv-num").textContent;
@@ -478,4 +403,4 @@
 </script>
 
 </body>
-</html>
+    </html>
