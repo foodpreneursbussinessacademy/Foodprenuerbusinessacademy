@@ -36,13 +36,25 @@ body{
   border-radius:28px;
   box-shadow:0 30px 60px rgba(0,0,0,.12);
   text-align:center;
+  margin: 20px;
 }
 
 /* Headings */
 .auth-card h2{
-  margin-bottom:16px;
+  margin-bottom:8px;
   color:var(--purple);
   font-size:28px;
+}
+
+/* Enrollment Highlight */
+.enrollment-info {
+  background: #f3f0ff;
+  padding: 10px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  border: 1px solid #ddd6fe;
+  display: none; /* Hidden by default, shown if course data exists */
 }
 
 /* Input group */
@@ -107,13 +119,6 @@ body{
   box-shadow:0 18px 35px rgba(109,40,217,.45);
 }
 
-.signup-btn{
-  margin-top:12px;
-  background:transparent;
-  color:var(--purple);
-  border:2px dashed var(--purple);
-}
-
 /* Links */
 .link{
   display:block;
@@ -137,8 +142,13 @@ body{
 <body>
 
 <div class="auth-card">
-  <h2>Join Food Business Academy 🍲</h2>
-  <p style="color:#6b7280; font-size:14px; margin-bottom:20px;">Sign up and start your journey to becoming a food entrepreneur!</p>
+  <h2>Join Academy 🍲</h2>
+  
+  <div id="enrollmentBanner" class="enrollment-info">
+    Registering for: <strong id="courseDisplayName">...</strong>
+  </div>
+
+  <p style="color:#6b7280; font-size:14px; margin-bottom:20px;">Create your account to start learning!</p>
 
   <div class="input-group">
     <label for="fullName">Full Name</label>
@@ -186,12 +196,11 @@ body{
     <input type="text" id="country" required>
   </div>
 
-  <button class="btn" onclick="signup()">Sign Up</button>
+  <button class="btn" id="signupBtn" onclick="signup()">Sign Up</button>
   <span class="link" onclick="goToLogin()">Already have an account? Login</span>
   <div id="error" class="error"></div>
 </div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -206,20 +215,38 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// --- 1. GRAB COURSE DETAILS FROM URL ---
+const urlParams = new URLSearchParams(window.location.search);
+const courseId = urlParams.get('courseId');
+const courseName = urlParams.get('name');
+const coursePrice = urlParams.get('price');
+
+// If course data exists, update the UI
+if (courseId && courseName) {
+  document.getElementById('enrollmentBanner').style.display = 'block';
+  document.getElementById('courseDisplayName').textContent = courseName;
+  document.getElementById('signupBtn').textContent = 'Sign Up & Pay';
+}
+
 /* Toggle password visibility */
 function togglePassword(){
   const pass = document.getElementById('password');
   pass.type = pass.type === 'password' ? 'text' : 'password';
 }
 
-/* Navigation */
+/* Navigation back to login (preserving course data) */
 function goToLogin(){
-  window.location.href = 'index.html';
+  let target = 'index.html';
+  if (courseId) {
+    target += `?courseId=${courseId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
+  }
+  window.location.href = target;
 }
 
 /* Sign up */
 async function signup(){
   const error = document.getElementById('error');
+  const btn = document.getElementById('signupBtn');
   error.textContent = '';
 
   const fullName = document.getElementById('fullName').value.trim();
@@ -231,11 +258,14 @@ async function signup(){
   const gender = document.getElementById('gender').value;
   const country = document.getElementById('country').value.trim();
 
-  // Validate all fields
   if(!fullName || !email || !password || !phone || !address || !dob || !gender || !country){
     error.textContent = 'Please fill all required fields';
     return;
   }
+
+  // Disable button to prevent double clicks
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
 
   try{
     // Create Firebase Auth account
@@ -254,15 +284,23 @@ async function signup(){
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // Redirect to student dashboard
-    window.location.href = 'student.html';
+    // --- 2. DYNAMIC REDIRECT ---
+    if (courseId) {
+      // If student clicked buy on Blogger, send to payment page with details
+      window.location.href = `payment-preview.html?courseId=${courseId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
+    } else {
+      // Otherwise, go to standard student dashboard
+      window.location.href = 'student.html';
+    }
 
   } catch(err){
     console.error(err);
     error.textContent = err.message;
+    btn.disabled = false;
+    btn.textContent = courseId ? 'Sign Up & Pay' : 'Sign Up';
   }
 }
 </script>
 
 </body>
-    </html>
+</html>
