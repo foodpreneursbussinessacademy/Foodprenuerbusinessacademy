@@ -8,14 +8,14 @@
 <style>
 :root {
   /* Brand Colors */
-  --primary-dark: #1e1b4b;   /* Deep Indigo */
-  --primary: #4f46e5;        /* Vibrant Blue */
-  --secondary: #7c3aed;      /* Vivid Purple */
+  --primary-dark: #1e1b4b;   
+  --primary: #4f46e5;        
+  --secondary: #7c3aed;      
   
   /* Accent Colors */
-  --accent-yellow: #f59e0b;  /* Amber/Gold */
-  --accent-red: #dc2626;     /* Red */
-  --accent-green: #10b981;   /* Emerald */
+  --accent-yellow: #f59e0b;  
+  --accent-red: #dc2626;     
+  --accent-green: #10b981;   
 
   /* Neutrals */
   --bg-color: #f8fafc;
@@ -24,7 +24,6 @@
   --text-muted: #64748b;
   
   /* Effects */
-  --glass: rgba(255, 255, 255, 0.95);
   --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
@@ -103,7 +102,7 @@ header {
   gap: 30px;
 }
 
-/* --- ADVANCED CARD DESIGN --- */
+/* --- CARD DESIGN --- */
 .course-card {
   background: var(--card-bg);
   border-radius: 20px;
@@ -122,7 +121,6 @@ header {
   border-color: var(--secondary);
 }
 
-/* Top Decoration Line */
 .card-top-accent {
   height: 6px;
   background: linear-gradient(90deg, var(--primary), var(--secondary));
@@ -131,7 +129,6 @@ header {
 
 .card-body { padding: 30px; flex-grow: 1; }
 
-/* Header Area */
 .card-header { margin-bottom: 20px; }
 .card-title {
   font-size: 1.5rem;
@@ -144,8 +141,7 @@ header {
 /* Status Badge */
 .badge {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 20px; right: 20px;
   padding: 5px 12px;
   border-radius: 6px;
   font-size: 0.7rem;
@@ -156,51 +152,24 @@ header {
 .badge.approved { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
 .badge.pending { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 
-/* Overview Text */
 .label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--primary);
-  font-weight: 700;
-  margin-bottom: 8px;
-  display: block;
+  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--primary); font-weight: 700; margin-bottom: 8px; display: block;
 }
 .overview-text {
-  font-size: 0.95rem;
-  color: var(--text-muted);
-  line-height: 1.6;
-  margin-bottom: 25px;
-  border-left: 3px solid #e2e8f0;
-  padding-left: 15px;
+  font-size: 0.95rem; color: var(--text-muted); line-height: 1.6;
+  margin-bottom: 25px; border-left: 3px solid #e2e8f0; padding-left: 15px;
 }
 
-/* Curriculum List */
-.curriculum {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
+.curriculum { list-style: none; padding: 0; margin: 0; }
 .curriculum li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  font-size: 0.9rem;
-  color: var(--text-main);
-  font-weight: 500;
+  display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  font-size: 0.9rem; color: var(--text-main); font-weight: 500;
 }
 .curriculum li::before {
-  content: "✓";
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px; height: 20px;
-  background: #ede9fe;
-  color: var(--secondary);
-  border-radius: 50%;
-  font-size: 12px;
-  font-weight: bold;
+  content: "✓"; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; background: #ede9fe; color: var(--secondary);
+  border-radius: 50%; font-size: 12px; font-weight: bold;
 }
 
 /* Footer & Actions */
@@ -211,68 +180,56 @@ header {
 }
 
 .price-area {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
 }
 .price-label { font-size: 0.9rem; color: var(--text-muted); }
 .price-val { 
-  font-size: 1.6rem; 
-  font-weight: 800; 
-  color: var(--accent-yellow); /* Yellow for Money */
+  font-size: 1.6rem; font-weight: 800; color: var(--accent-yellow); 
   text-shadow: 1px 1px 0px rgba(0,0,0,0.1);
 }
 .price-val small { font-size: 1rem; color: var(--text-muted); font-weight: 500; }
 
 /* Buttons */
 .btn {
-  width: 100%;
-  padding: 14px;
-  border: none;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: transform 0.2s;
+  width: 100%; padding: 14px; border: none; border-radius: 10px;
+  font-weight: 600; font-size: 1rem; cursor: pointer; transition: transform 0.2s;
 }
 .btn:active { transform: scale(0.98); }
 
 .btn-pay {
   background: linear-gradient(135deg, var(--primary), var(--secondary));
-  color: white;
-  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+  color: white; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
 }
 .btn-pay:hover { filter: brightness(110%); }
 
 .btn-access {
-  background: var(--accent-green);
-  color: white;
+  background: var(--accent-green); color: white;
   box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 }
 
-.btn-pending {
-  background: #cbd5e1;
-  color: #475569;
-  cursor: not-allowed;
+/* Pending State Buttons */
+.pending-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
 }
+.btn-pending {
+  background: #e2e8f0; color: #64748b; cursor: not-allowed; font-size: 0.9rem;
+}
+.btn-invoice {
+  background: #e0f2fe; color: #0284c7; border: 1px solid #7dd3fc; font-size: 0.9rem;
+}
+.btn-invoice:hover { background: #bae6fd; }
 
 .link-cancel {
-  display: block;
-  text-align: center;
-  margin-top: 10px;
-  color: var(--accent-red); /* Red for Danger */
-  font-size: 0.85rem;
-  text-decoration: none;
-  font-weight: 500;
-  cursor: pointer;
+  display: block; text-align: center; margin-top: 10px; color: var(--accent-red);
+  font-size: 0.85rem; text-decoration: none; font-weight: 500; cursor: pointer;
 }
 .link-cancel:hover { text-decoration: underline; }
 
-/* Loading State */
 .loading-box { grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted); }
 
-/* Mobile */
 @media(max-width: 600px) {
   header { flex-direction: column; text-align: center; }
   .hero h1 { font-size: 2rem; }
@@ -329,7 +286,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* 📚 COURSES DATA (Expanded with Overview & Curriculum) */
+/* 📚 COURSES DATA */
 const courses = [
   {
     name: "Food Business Management Course",
@@ -370,7 +327,7 @@ onAuthStateChanged(auth, async (user) => {
   if (!user) return location.href = "login.html";
 
   // UI Updates
-  document.getElementById("studentEmail").textContent = user.email.split('@')[0]; // Show name part only
+  document.getElementById("studentEmail").textContent = user.email.split('@')[0];
   document.getElementById("studentId").textContent = `ID: ${user.uid.substring(0,6).toUpperCase()}`;
   document.getElementById("avatarLetter").textContent = user.email.charAt(0).toUpperCase();
 
@@ -395,15 +352,23 @@ onAuthStateChanged(auth, async (user) => {
     let badge = "", button = "";
 
     if (hasAccess) {
+      // 1. APPROVED / PAID
       badge = `<div class="badge approved">Active Student</div>`;
       button = `<button class="btn btn-access" onclick="startCourse('${course.name}')">Enter Classroom</button>`;
+    
     } else if (payment?.status === "pending") {
+      // 2. PENDING APPROVAL (Added View Invoice Button here)
       badge = `<div class="badge pending">Pending Approval</div>`;
       button = `
-        <button class="btn btn-pending" disabled>Processing Payment...</button>
+        <div class="pending-actions">
+           <button class="btn btn-pending" disabled>Processing...</button>
+           <button class="btn btn-invoice" onclick="viewInvoice('${payment.id}')">View Invoice</button>
+        </div>
         <a class="link-cancel" onclick="cancelInvoice('${payment.id}')">Cancel this invoice</a>
       `;
+    
     } else {
+      // 3. NEW ENROLLMENT
       button = `<button class="btn btn-pay" onclick="createInvoice('${course.name}', ${course.price})">Enroll Now</button>`;
     }
 
@@ -436,13 +401,20 @@ onAuthStateChanged(auth, async (user) => {
   });
 });
 
-/* 🧾 INVOICE LOGIC */
+/* 🧾 ACTIONS */
+
+// Go to the Invoice Page (Existing or New)
+window.viewInvoice = (invoiceId) => {
+    window.location.href = `student-details.html?invoiceId=${invoiceId}`;
+};
+
 window.createInvoice = async (courseName, price) => {
   const user = auth.currentUser;
   if (!user) return;
 
   if (!confirm(`Confirm enrollment for:\n${courseName}\nPrice: $${price}`)) return;
 
+  // Check if pending invoice exists to avoid duplicates
   const existingQ = query(collection(db,"payments"), where("studentId","==",user.uid), where("courseName","==",courseName), where("status","==","pending"));
   const existingSnap = await getDocs(existingQ);
 
@@ -451,14 +423,15 @@ window.createInvoice = async (courseName, price) => {
     return;
   }
 
+  // Create new Invoice
   const docRef = await addDoc(collection(db,"payments"), {
     studentId: user.uid,
     studentName: user.displayName || "Student",
     email: user.email,
     courseName,
     price,
-    paymentMethod: "Manual",
-    invoiceNumber: `FBA-${Date.now()}`,
+    paymentMethod: "Manual", // Will be updated in student-details.html
+    invoiceNumber: `FBA-${Math.floor(100000 + Math.random() * 900000)}`,
     status: "pending",
     createdAt: serverTimestamp()
   });
@@ -482,7 +455,7 @@ window.startCourse = (courseName) => {
   };
   const page = coursePages[courseName];
   if (page) window.location.href = page;
-  else alert("Error: Course page not linked.");
+  else alert("Error: Course page not linked yet.");
 };
 </script>
 </body>
