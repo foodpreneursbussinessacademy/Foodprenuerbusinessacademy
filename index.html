@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>FoodPreneurs Academy | Login</title>
+<title>FoodPreneurs Academy | Access</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -11,8 +11,7 @@
 <style>
     /* --- COLOR PALETTE --- */
     :root {
-        /* Real Purple-Blue Gradient */
-        --brand-gradient: linear-gradient(135deg, #1e3a8a 0%, #4c1d95 100%); /* Deep Blue to Deep Purple */
+        --brand-gradient: linear-gradient(135deg, #1e3a8a 0%, #4c1d95 100%);
         --primary-btn: #4f46e5;
         --secondary-btn-bg: #f3f4f6;
         --secondary-btn-text: #4c1d95;
@@ -31,7 +30,6 @@
         align-items: center;
         justify-content: center;
         background: var(--bg-color);
-        /* Subtle background pattern */
         background-image: radial-gradient(#4f46e5 0.5px, transparent 0.5px), radial-gradient(#4f46e5 0.5px, #eef2ff 0.5px);
         background-size: 20px 20px;
         background-position: 0 0, 10px 10px;
@@ -45,7 +43,7 @@
         max-width: 1000px;
         min-height: 600px;
         border-radius: 24px;
-        box-shadow: 0 20px 60px rgba(30, 58, 138, 0.15); /* Blue-ish shadow */
+        box-shadow: 0 20px 60px rgba(30, 58, 138, 0.15);
         display: flex;
         overflow: hidden;
     }
@@ -68,7 +66,7 @@
         content: '';
         position: absolute;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: url('https://www.transparenttextures.com/patterns/cubes.png'); /* Subtle texture */
+        background: url('https://www.transparenttextures.com/patterns/cubes.png');
         opacity: 0.1;
     }
 
@@ -179,7 +177,6 @@
         color: var(--primary-btn);
         font-weight: 600;
         cursor: pointer;
-        text-decoration: none;
     }
 
     /* Buttons */
@@ -231,12 +228,12 @@
         margin-bottom: 12px;
     }
 
-    .btn-signup {
+    .btn-signup-toggle {
         background: white;
         color: var(--secondary-btn-text);
         border: 2px solid var(--secondary-btn-text);
     }
-    .btn-signup:hover {
+    .btn-signup-toggle:hover {
         background: var(--secondary-btn-bg);
         transform: translateY(-2px);
     }
@@ -253,6 +250,8 @@
         margin-bottom: 20px;
         display: none;
     }
+    
+    .hidden { display: none !important; }
 
     /* Responsive */
     @media (max-width: 900px) {
@@ -286,6 +285,11 @@
             Welcome back! Please enter your credentials to access your courses.
         </p>
 
+        <div class="input-group hidden" id="nameContainer">
+            <i class="fa fa-user icon"></i>
+            <input type="text" id="fullname" placeholder="Full Name">
+        </div>
+
         <div class="input-group">
             <i class="fa fa-envelope icon"></i>
             <input type="email" id="email" placeholder="Email Address">
@@ -301,11 +305,11 @@
             <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
                 <input type="checkbox" id="rememberMe"> Remember Me
             </label>
-            <span class="forgot-pass" onclick="handleForgot()">Forgot Password?</span>
+            <span class="forgot-pass" id="forgotLink" onclick="handleForgot()">Forgot Password?</span>
         </div>
 
-        <button class="btn btn-login" onclick="handleLogin()">
-            <i class="fa fa-sign-in-alt"></i> <span id="loginBtnText">Login to Portal</span>
+        <button class="btn btn-login" onclick="handleAuth()">
+            <i class="fa fa-sign-in-alt" id="authBtnIcon"></i> <span id="authBtnText">Login to Portal</span>
         </button>
 
         <div class="divider">
@@ -313,8 +317,8 @@
         </div>
 
         <div class="create-account-area">
-            <p class="create-instruction">If you don't have an account yet, create one to get started.</p>
-            <button class="btn btn-signup" onclick="goToSignup()">
+            <p class="create-instruction" id="toggleInstruction">If you don't have an account yet, create one.</p>
+            <button class="btn btn-signup-toggle" id="toggleBtn" onclick="toggleAuthMode()">
                 Create New Account
             </button>
         </div>
@@ -335,23 +339,25 @@
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
-    const db = firebase.firestore(); // Initialize DB
+    const db = firebase.firestore();
 
-    // --- 2. URL PARAMETER HANDLING (Blogger Data) ---
-    // Grab data passed from Blogger
+    // --- 2. GLOBAL STATE ---
+    let isSignupMode = false;
+
+    // --- 3. URL PARAMETER HANDLING ---
     const urlParams = new URLSearchParams(window.location.search);
     const courseId = urlParams.get('courseId');
     const courseName = urlParams.get('name');
     const coursePrice = urlParams.get('price');
 
-    // If a course is present, update the UI to reflect we are enrolling
+    // Update UI if course details exist (Enrolling context)
     if (courseId && courseName) {
-        document.getElementById('pageTitle').innerHTML = `Login to Enroll:<br><span style="color:#4f46e5; font-size:0.8em;">${courseName}</span>`;
-        document.getElementById('pageInstruction').innerText = "Please login to proceed with your enrollment application.";
-        document.getElementById('loginBtnText').innerText = "Login & Continue";
+        document.getElementById('pageTitle').innerHTML = `Enrollment Login:<br><span style="color:#4f46e5; font-size:0.8em;">${courseName}</span>`;
+        document.getElementById('pageInstruction').innerText = "Please login or create an account to proceed with enrollment.";
+        document.getElementById('authBtnText').innerText = "Login & Continue";
     }
 
-    // --- 3. UI INTERACTIONS ---
+    // --- 4. UI INTERACTIONS ---
 
     function togglePassword() {
         const passInput = document.getElementById('password');
@@ -367,29 +373,85 @@
         }
     }
 
+    function toggleAuthMode() {
+        isSignupMode = !isSignupMode; // Switch State
+
+        const nameContainer = document.getElementById('nameContainer');
+        const forgotLink = document.getElementById('forgotLink');
+        const pageTitle = document.getElementById('pageTitle');
+        const authBtnText = document.getElementById('authBtnText');
+        const authBtnIcon = document.getElementById('authBtnIcon');
+        const toggleBtn = document.getElementById('toggleBtn');
+        const toggleInstruction = document.getElementById('toggleInstruction');
+        const errorBox = document.getElementById('errorBox');
+
+        errorBox.style.display = 'none'; // Clear errors
+
+        if (isSignupMode) {
+            // SWITCH TO SIGNUP UI
+            nameContainer.classList.remove('hidden');
+            forgotLink.classList.add('hidden');
+            
+            if (!courseId) {
+                pageTitle.innerText = "Create Account";
+                authBtnText.innerText = "Sign Up";
+            } else {
+                pageTitle.innerHTML = `Create Account for:<br><span style="color:#4f46e5; font-size:0.8em;">${courseName}</span>`;
+                authBtnText.innerText = "Sign Up & Continue";
+            }
+            
+            authBtnIcon.className = "fa fa-user-plus";
+            toggleInstruction.innerText = "Already have an account?";
+            toggleBtn.innerText = "Back to Login";
+
+        } else {
+            // SWITCH BACK TO LOGIN UI
+            nameContainer.classList.add('hidden');
+            forgotLink.classList.remove('hidden');
+
+            if (!courseId) {
+                pageTitle.innerText = "Student Login";
+                authBtnText.innerText = "Login to Portal";
+            } else {
+                pageTitle.innerHTML = `Enrollment Login:<br><span style="color:#4f46e5; font-size:0.8em;">${courseName}</span>`;
+                authBtnText.innerText = "Login & Continue";
+            }
+
+            authBtnIcon.className = "fa fa-sign-in-alt";
+            toggleInstruction.innerText = "If you don't have an account yet, create one.";
+            toggleBtn.innerText = "Create New Account";
+        }
+    }
+
     function showError(message) {
         const box = document.getElementById('errorBox');
         let clearMessage = message;
-        if(message.includes('user-not-found')) clearMessage = "We couldn't find an account with that email.";
-        if(message.includes('wrong-password')) clearMessage = "Incorrect password. Please try again.";
-        if(message.includes('invalid-email')) clearMessage = "Please enter a valid email address.";
-        if(message.includes('too-many-requests')) clearMessage = "Too many failed attempts. Please try again later.";
+        if(message.includes('user-not-found')) clearMessage = "No account found with this email.";
+        if(message.includes('wrong-password')) clearMessage = "Incorrect password.";
+        if(message.includes('email-already-in-use')) clearMessage = "This email is already registered. Please login.";
+        if(message.includes('weak-password')) clearMessage = "Password should be at least 6 characters.";
         box.textContent = clearMessage;
         box.style.display = 'block';
     }
 
-    // --- 4. CORE LOGIC: LOGIN & REDIRECT ---
+    // --- 5. CORE LOGIC: AUTH & REDIRECT ---
 
-    async function handleLogin() {
+    async function handleAuth() {
         const email = document.getElementById('email').value.trim();
         const password = document.getElementById('password').value.trim();
+        const fullname = document.getElementById('fullname').value.trim();
         const remember = document.getElementById('rememberMe').checked;
         const errorBox = document.getElementById('errorBox');
         
         errorBox.style.display = 'none';
 
         if (!email || !password) {
-            showError("Please enter both your email and password.");
+            showError("Please enter email and password.");
+            return;
+        }
+
+        if (isSignupMode && !fullname) {
+            showError("Please enter your full name.");
             return;
         }
 
@@ -398,11 +460,31 @@
             const persistence = remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION;
             await auth.setPersistence(persistence);
             
-            // Sign In
-            const userCredential = await auth.signInWithEmailAndPassword(email, password);
-            const user = userCredential.user;
+            let user;
 
-            // --- CHECK ENROLLMENT LOGIC ---
+            if (isSignupMode) {
+                // --- SIGN UP LOGIC ---
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                user = userCredential.user;
+                
+                // Update Display Name
+                await user.updateProfile({ displayName: fullname });
+
+                // (Optional) Save user to 'users' collection for future record keeping
+                await db.collection('users').doc(user.uid).set({
+                    name: fullname,
+                    email: email,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    role: 'student'
+                }, { merge: true });
+
+            } else {
+                // --- LOGIN LOGIC ---
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                user = userCredential.user;
+            }
+
+            // --- COMMON REDIRECT LOGIC ---
             checkEnrollmentAndRedirect(user);
 
         } catch (error) {
@@ -411,14 +493,14 @@
     }
 
     async function checkEnrollmentAndRedirect(user) {
-        // SCENARIO A: Normal Login (No course data in URL)
+        // SCENARIO A: No Course Data (Standard Login)
         if (!courseId) {
             window.location.href = 'student.html';
             return;
         }
 
-        // SCENARIO B: Enrolling (Course data exists)
-        // Check DB: Does this user already have a doc for this course?
+        // SCENARIO B: Enrolling
+        // Even for new users, we run this to route them correctly
         try {
             const snapshot = await db.collection('enrollments')
                 .where('userId', '==', user.uid)
@@ -430,13 +512,13 @@
                 window.location.href = 'student.html';
             } else {
                 // User DOES NOT have the course -> Go to Payment Preview
-                // Pass the data along to the next page
+                // This works for NEW SIGNUPS too (snapshot will be empty)
                 const targetUrl = `payment-preview.html?courseId=${courseId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
                 window.location.href = targetUrl;
             }
         } catch (error) {
             console.error("Database check failed", error);
-            // Fallback: If DB check fails, send them to dashboard or show error
+            // Fallback
             window.location.href = 'student.html'; 
         }
     }
@@ -444,26 +526,12 @@
     function handleForgot() {
         const email = document.getElementById('email').value.trim();
         if(!email){
-            showError("Please enter your email address in the field above first.");
+            showError("Enter your email address first.");
             return;
         }
         auth.sendPasswordResetEmail(email)
-            .then(() => alert("Password reset link has been sent to your email."))
+            .then(() => alert("Reset link sent!"))
             .catch((error) => showError(error.message));
-    }
-
-    // --- 5. SIGNUP REDIRECT (Preserve Data) ---
-    function goToSignup() {
-        // If the user wants to sign up, we must pass the course info 
-        // to the signup page so they don't lose it!
-        let target = 'signup.html';
-        
-        if (courseId) {
-            // Append params if they exist
-            target += `?courseId=${courseId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
-        }
-        
-        window.location.href = target;
     }
 </script>
 
