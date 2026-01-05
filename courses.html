@@ -329,7 +329,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* 📚 COURSES DATA (Expanded with Overview & Curriculum) */
+/* 📚 COURSES DATA */
 const courses = [
   {
     name: "Food Business Management Course",
@@ -370,7 +370,7 @@ onAuthStateChanged(auth, async (user) => {
   if (!user) return location.href = "login.html";
 
   // UI Updates
-  document.getElementById("studentEmail").textContent = user.email.split('@')[0]; // Show name part only
+  document.getElementById("studentEmail").textContent = user.email.split('@')[0];
   document.getElementById("studentId").textContent = `ID: ${user.uid.substring(0,6).toUpperCase()}`;
   document.getElementById("avatarLetter").textContent = user.email.charAt(0).toUpperCase();
 
@@ -436,7 +436,7 @@ onAuthStateChanged(auth, async (user) => {
   });
 });
 
-/* 🧾 INVOICE LOGIC */
+/* 🧾 INVOICE LOGIC (FIXED) */
 window.createInvoice = async (courseName, price) => {
   const user = auth.currentUser;
   if (!user) return;
@@ -447,7 +447,9 @@ window.createInvoice = async (courseName, price) => {
   const existingSnap = await getDocs(existingQ);
 
   if (!existingSnap.empty) {
-    window.location.href = `student-details.html?invoiceId=${existingSnap.docs[0].id}`;
+    const existingId = existingSnap.docs[0].id;
+    // FIX: Passing data in URL
+    window.location.href = `student-details.html?invoiceId=${existingId}&name=${encodeURIComponent(courseName)}&price=${price}`;
     return;
   }
 
@@ -463,7 +465,8 @@ window.createInvoice = async (courseName, price) => {
     createdAt: serverTimestamp()
   });
 
-  window.location.href = `student-details.html?invoiceId=${docRef.id}`;
+  // FIX: Passing data in URL
+  window.location.href = `student-details.html?invoiceId=${docRef.id}&name=${encodeURIComponent(courseName)}&price=${price}`;
 };
 
 window.cancelInvoice = async (invoiceId) => {
