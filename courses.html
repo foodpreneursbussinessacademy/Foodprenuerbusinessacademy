@@ -24,6 +24,7 @@
   --text-muted: #64748b;
   
   /* Effects */
+  --glass: rgba(255, 255, 255, 0.95);
   --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
@@ -128,16 +129,16 @@ header {
   width: 100%;
 }
 
-.card-body { padding: 30px; flex-grow: 1; position: relative; }
+.card-body { padding: 30px; flex-grow: 1; }
 
 /* Header Area */
+.card-header { margin-bottom: 20px; }
 .card-title {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--primary-dark);
   margin: 0 0 10px 0;
   line-height: 1.3;
-  padding-right: 20px; /* Space for badge */
 }
 
 /* Status Badge */
@@ -219,9 +220,10 @@ header {
 .price-val { 
   font-size: 1.6rem; 
   font-weight: 800; 
-  color: var(--accent-yellow);
+  color: var(--accent-yellow); /* Yellow for Money */
   text-shadow: 1px 1px 0px rgba(0,0,0,0.1);
 }
+.price-val small { font-size: 1rem; color: var(--text-muted); font-weight: 500; }
 
 /* Buttons */
 .btn {
@@ -253,8 +255,19 @@ header {
   background: #cbd5e1;
   color: #475569;
   cursor: not-allowed;
-  box-shadow: none;
 }
+
+.link-cancel {
+  display: block;
+  text-align: center;
+  margin-top: 10px;
+  color: var(--accent-red); /* Red for Danger */
+  font-size: 0.85rem;
+  text-decoration: none;
+  font-weight: 500;
+  cursor: pointer;
+}
+.link-cancel:hover { text-decoration: underline; }
 
 /* Loading State */
 .loading-box { grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted); }
@@ -277,7 +290,7 @@ header {
     <div class="user-avatar" id="avatarLetter">U</div>
     <div class="user-details">
       <span id="studentEmail">Loading...</span>
-      <small id="studentId">...</small>
+      <small id="studentId">ID: ...</small>
     </div>
   </div>
 </header>
@@ -289,11 +302,11 @@ header {
 
 <main class="container">
   <div class="grid" id="coursesGrid">
-    <div class="loading-box">Checking your enrollment status...</div>
+    <div class="loading-box">Loading Academy Courses...</div>
   </div>
 </main>
 
-<script type="module">
+        <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
 import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
@@ -326,19 +339,29 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  // Set User Header Details
-  document.getElementById("studentEmail").textContent = user.email;
-  document.getElementById("studentId").textContent = "ID: " + user.uid.substring(0, 6) + "...";
-  document.getElementById("avatarLetter").textContent = user.email.charAt(0).toUpperCase();
+  const email = user.email;
+  document.getElementById("studentEmail").textContent = email;
+  document.getElementById("avatarLetter").textContent = email.charAt(0).toUpperCase();
 
-  // 1. Check Paid Courses (Logic from Original Code)
+  // 1. Check Paid Courses (Firestore)
   const studentSnap = await getDoc(doc(db, "students", user.uid));
   const paidCourses = studentSnap.exists() ? (studentSnap.data().coursesPaid || []) : [];
 
-  // 2. Check Pending Payments (Logic from Original Code - Checks database for invoices)
+  // 2. Check Pending Payments (Firestore)
   const payQuery = query(collection(db, "payments"), where("studentId", "==", user.uid), where("status", "==", "pending"));
   const paySnap = await getDocs(payQuery);
-  const pendingCourses = paySnap.docs.map(d => d.data().courseName);
+  let pendingCourses = paySnap.docs.map(d => d.data().courseName);
+
+  // 3. Check LocalStorage (The "Immediate" Status)
+  const localStatus = JSON.parse(localStorage.getItem("courseStatus")) || {};
+  const studentLocalData = localStatus[email] || {};
+  
+  // Combine Firestore pending and LocalStorage pending
+  Object.keys(studentLocalData).forEach(courseName => {
+    if (studentLocalData[courseName] === "pending" && !pendingCourses.includes(courseName)) {
+      pendingCourses.push(courseName);
+    }
+  });
 
   renderCourses(paidCourses, pendingCourses);
 });
@@ -348,36 +371,32 @@ function renderCourses(paid, pending) {
   grid.innerHTML = "";
 
   courses.forEach(course => {
-    // Default State (Not Enrolled)
     let statusBadge = "";
-    let actionBtn = `<button class="btn btn-pay" onclick="enroll('${course.name}', ${course.price})">Enroll Now</button>`;
+    let actionBtn = `<button class="btn btn-enroll" onclick="enroll('${course.name}', ${course.price})">Enroll Now</button>`;
 
-    // State: Paid (Approved)
     if (paid.includes(course.name)) {
-      statusBadge = `<div class="badge approved">Active</div>`;
+      statusBadge = `<div class="badge" style="background:#dcfce7; color:#15803d;">Active</div>`;
       actionBtn = `<button class="btn btn-access" onclick="openCourse('${course.name}')">Enter Classroom</button>`;
-    } 
-    // State: Invoice Generated (Pending)
-    else if (pending.includes(course.name)) {
-      statusBadge = `<div class="badge pending">Pending Payment</div>`;
-      actionBtn = `<button class="btn btn-pending" disabled>Processing Payment...</button>`;
+    } else if (pending.includes(course.name)) {
+      statusBadge = `<div class="badge">Pending Payment</div>`;
+      actionBtn = `<button class="btn" style="background:#e2e8f0; color:#64748b;" disabled>Waiting for Approval...</button>`;
     }
 
     grid.innerHTML += `
       <div class="course-card">
-        <div class="card-top-accent"></div>
+        <div class="card-accent"></div>
         <div class="card-body">
           ${statusBadge}
           <h3 class="card-title">${course.name}</h3>
           <span class="label">Overview</span>
-          <p class="overview-text">${course.overview}</p>
+          <p class="overview">${course.overview}</p>
           <span class="label">Includes</span>
           <ul class="curriculum">${course.curriculum.map(c => `<li>${c}</li>`).join("")}</ul>
         </div>
         <div class="card-footer">
-          <div class="price-area">
-            <span class="price-label">Course Fee</span>
-            <span class="price-val">$${course.price}</span>
+          <div class="price-row">
+            <span style="color:var(--text-muted); font-size:0.9rem;">Course Fee</span>
+            <span class="price">$${course.price}</span>
           </div>
           ${actionBtn}
         </div>
@@ -386,16 +405,11 @@ function renderCourses(paid, pending) {
   });
 }
 
-// Global functions attached to window so onClick works
 window.enroll = (name, price) => {
   window.location.href = `student-details.html?name=${encodeURIComponent(name)}&price=${price}`;
 };
 
 window.openCourse = (name) => {
-  // Logic to handle opening the course page
-  alert("Redirecting to classroom for: " + name);
-  // Example: window.location.href = "classroom.html?course=" + encodeURIComponent(name);
+  alert("Opening " + name);
 };
-</script>
-</body>
-</html>
+        </script>
