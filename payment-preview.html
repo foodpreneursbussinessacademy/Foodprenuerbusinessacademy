@@ -363,7 +363,7 @@ if(document.getElementById("displayCourse")) {
     document.getElementById("displayPrice").textContent = "$" + (coursePrice || "0.00");
 }
 
-// --- 3. MAIN LOGIC (AUTH & SAFETY CHECK) ---
+// --- 3. MAIN LOGIC (AUTH & PRE-CHECK) ---
 firebase.auth().onAuthStateChanged((user) => {
     if (user) {
         // Capture User Details for Storage
@@ -373,28 +373,21 @@ firebase.auth().onAuthStateChanged((user) => {
         
         document.getElementById("displayEmail").textContent = studentEmail;
 
+        // --- DISABLED AUTOMATIC REDIRECTS FOR DEBUGGING ---
         if (!courseName || courseName === "N/A" || !coursePrice) {
-             window.location.href = "student.html";
-             return;
+            console.warn("Missing course data. Redirect prevented for debugging.");
+             // window.location.href = "student.html"; // DISABLED
         }
 
-        // --- CHECK ENROLLMENT STATUS ---
-        // We check the 'enrollments' collection.
-        // IF 'active' OR 'paid' => REDIRECT (Kick out).
-        // IF 'pending' OR missing => STAY ON PAGE.
         const docRef = db.collection("enrollments").doc(studentEmail);
         docRef.get().then((doc) => {
             if (doc.exists) {
                 const data = doc.data();
-                // ONLY redirect if the Admin has approved it (Active/Paid)
                 if (data[courseName] === "active" || data[courseName] === "paid") {
-                    console.log("Course is Active/Paid. Redirecting to student portal...");
-                    window.location.href = "student.html";
-                    return; 
+                    console.log("Course status: Active/Paid. Redirect prevented for debugging.");
+                    // window.location.href = "student.html"; // DISABLED
                 }
-                // If status is "pending", we do nothing (allow them to generate invoice)
             }
-            // If we are here, status is either "pending" or not found. Show page.
             document.body.classList.add('loaded');
         }).catch((error) => {
             console.log("Error checking enrollment:", error);
@@ -402,7 +395,7 @@ firebase.auth().onAuthStateChanged((user) => {
         });
 
     } else {
-        // Not logged in
+        // Not logged in - Still redirect to login
         window.location.href = "index.html";
     }
 });
@@ -423,7 +416,7 @@ function proceedPayment(){
     // --- UPGRADED STORAGE LOGIC: 'payments' Collection ---
     if(studentEmail && courseName) {
         
-        // Data format: Status is "pending" (Waiting for Admin)
+        // The Object Format You Requested
         const paymentData = {
             courseName: courseName,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -431,7 +424,7 @@ function proceedPayment(){
             invoiceNumber: invNumber,
             paymentMethod: method,
             price: coursePrice,
-            status: "pending", 
+            status: "pending",
             studentId: studentId,
             studentName: studentName
         };
@@ -439,10 +432,11 @@ function proceedPayment(){
         // Write to Firestore: collection "payments", document ID "invoiceNumber"
         db.collection("payments").doc(invNumber).set(paymentData)
         .then(() => {
-            console.log("Payment record created in 'payments' collection (Pending).");
+            console.log("Payment record successfully created in 'payments' collection.");
         })
         .catch((error) => {
             console.error("Error writing payment document: ", error);
+            alert("Error saving payment: " + error.message);
         });
 
         // Backup to LocalStorage
@@ -484,4 +478,4 @@ function downloadPDF(){
 }
 </script>
 </body>
-</html>
+    </html>
