@@ -306,15 +306,11 @@ header {
   </div>
 </main>
 
-<script type="module">
+        <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import {
-  getFirestore, collection, addDoc, query, where, getDocs,
-  doc, getDoc, serverTimestamp, deleteDoc
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-/* 🔥 FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
   authDomain: "students-login-29409.firebaseapp.com",
@@ -329,164 +325,91 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* 📚 COURSES DATA */
 const courses = [
-  {
-    name: "Food Business Management Course",
-    price: 49,
-    overview: "The flagship program for aspiring entrepreneurs. This course covers the entire ecosystem of running a compliant and profitable food business.",
-    curriculum: ["Business Model Canvas", "Operations & Compliance", "HACCP & Food Safety", "Supply Chain Logistics", "Digital Marketing Strategy"]
-  },
-  {
-    name: "Financial Management for Food Processors",
-    price: 59,
-    overview: "Understand the unique economics of food processing. Learn to manage yield loss, calculate unit costs accurately, and forecast cash flow.",
-    curriculum: ["Unit Costing & Yield Analysis", "Pricing for Retail vs Wholesale", "Cash Flow Management", "Budgeting for Seasonality", "Profit Maximization"]
-  },
-  {
-    name: "Food Value Addition Course for Farmers",
-    price: 45,
-    overview: "Stop selling raw produce for low margins. Learn the techniques to process, package, and brand your harvest for higher market value.",
-    curriculum: ["Post-Harvest Technology", "Processing Methods (Drying/Canning)", "Packaging & Labeling Laws", "Storage & Shelf Life", "Direct-to-Consumer Sales"]
-  },
-  {
-    name: "New Product Development and Management",
-    price: 69,
-    overview: "A masterclass in innovation. Take an idea from a kitchen recipe to a shelf-stable commercial product ready for supermarkets.",
-    curriculum: ["Concept & Market Research", "Recipe Scaling & Prototyping", "Sensory Evaluation", "Regulatory Approval Steps", "Launch Strategy"]
-  },
-  {
-    name: "Management",
-    price: 39,
-    overview: "Essential soft skills and hard tactics for managing teams in high-pressure food environments like kitchens and factories.",
-    curriculum: ["Leadership Dynamics", "Conflict Resolution", "Staff Scheduling & Efficiency", "Business Ethics", "Decision Making Frameworks"]
-  }
+  { name: "Food Business Management Course", price: 49, overview: "Master the ecosystem of running a compliant food business.", curriculum: ["Business Models", "Compliance", "Digital Marketing"] },
+  { name: "Financial Management for Food Processors", price: 59, overview: "Learn unit costing, yield analysis, and profit maximization.", curriculum: ["Costing", "Pricing Strategy", "Cash Flow"] },
+  { name: "Food Value Addition Course for Farmers", price: 45, overview: "Turn raw produce into high-value branded products.", curriculum: ["Post-Harvest", "Packaging", "Branding"] },
+  { name: "New Product Development and Management", price: 69, overview: "Go from kitchen recipe to supermarket shelf-ready.", curriculum: ["Prototyping", "Sensory Eval", "Regulatory"] },
+  { name: "Management", price: 39, overview: "Leadership tactics for high-pressure food environments.", curriculum: ["Leadership", "Ethics", "Decision Making"] }
 ];
 
-const grid = document.getElementById("coursesGrid");
-
-/* 🔥 AUTH LOGIC */
 onAuthStateChanged(auth, async (user) => {
-  if (!user) return location.href = "login.html";
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
 
-  // UI Updates
-  document.getElementById("studentEmail").textContent = user.email.split('@')[0];
-  document.getElementById("studentId").textContent = `ID: ${user.uid.substring(0,6).toUpperCase()}`;
-  document.getElementById("avatarLetter").textContent = user.email.charAt(0).toUpperCase();
+  const email = user.email;
+  document.getElementById("studentEmail").textContent = email;
+  document.getElementById("avatarLetter").textContent = email.charAt(0).toUpperCase();
 
-  // Fetch Data
-  const studentSnap = await getDoc(doc(db,"students",user.uid));
-  const coursesPaid = studentSnap.exists() ? (studentSnap.data().coursesPaid || []) : [];
+  // 1. Check Paid Courses (Firestore)
+  const studentSnap = await getDoc(doc(db, "students", user.uid));
+  const paidCourses = studentSnap.exists() ? (studentSnap.data().coursesPaid || []) : [];
 
-  const paymentsSnap = await getDocs(
-    query(collection(db,"payments"), where("studentId","==",user.uid))
-  );
+  // 2. Check Pending Payments (Firestore)
+  const payQuery = query(collection(db, "payments"), where("studentId", "==", user.uid), where("status", "==", "pending"));
+  const paySnap = await getDocs(payQuery);
+  let pendingCourses = paySnap.docs.map(d => d.data().courseName);
 
-  const paymentMap = {};
-  paymentsSnap.forEach(d => paymentMap[d.data().courseName] = {...d.data(), id: d.id});
+  // 3. Check LocalStorage (The "Immediate" Status)
+  const localStatus = JSON.parse(localStorage.getItem("courseStatus")) || {};
+  const studentLocalData = localStatus[email] || {};
+  
+  // Combine Firestore pending and LocalStorage pending
+  Object.keys(studentLocalData).forEach(courseName => {
+    if (studentLocalData[courseName] === "pending" && !pendingCourses.includes(courseName)) {
+      pendingCourses.push(courseName);
+    }
+  });
 
-  // Render Grid
+  renderCourses(paidCourses, pendingCourses);
+});
+
+function renderCourses(paid, pending) {
+  const grid = document.getElementById("coursesGrid");
   grid.innerHTML = "";
 
   courses.forEach(course => {
-    const hasAccess = coursesPaid.includes(course.name);
-    const payment = paymentMap[course.name];
+    let statusBadge = "";
+    let actionBtn = `<button class="btn btn-enroll" onclick="enroll('${course.name}', ${course.price})">Enroll Now</button>`;
 
-    let badge = "", button = "";
-
-    if (hasAccess) {
-      badge = `<div class="badge approved">Active Student</div>`;
-      button = `<button class="btn btn-access" onclick="startCourse('${course.name}')">Enter Classroom</button>`;
-    } else if (payment?.status === "pending") {
-      badge = `<div class="badge pending">Pending Approval</div>`;
-      button = `
-        <button class="btn btn-pending" disabled>Processing Payment...</button>
-        <a class="link-cancel" onclick="cancelInvoice('${payment.id}')">Cancel this invoice</a>
-      `;
-    } else {
-      button = `<button class="btn btn-pay" onclick="createInvoice('${course.name}', ${course.price})">Enroll Now</button>`;
+    if (paid.includes(course.name)) {
+      statusBadge = `<div class="badge" style="background:#dcfce7; color:#15803d;">Active</div>`;
+      actionBtn = `<button class="btn btn-access" onclick="openCourse('${course.name}')">Enter Classroom</button>`;
+    } else if (pending.includes(course.name)) {
+      statusBadge = `<div class="badge">Pending Payment</div>`;
+      actionBtn = `<button class="btn" style="background:#e2e8f0; color:#64748b;" disabled>Waiting for Approval...</button>`;
     }
 
     grid.innerHTML += `
       <div class="course-card">
-        <div class="card-top-accent"></div>
-        ${badge}
+        <div class="card-accent"></div>
         <div class="card-body">
-          <div class="card-header">
-            <h3 class="card-title">${course.name}</h3>
-            <span class="label">Overview</span>
-            <div class="overview-text">${course.overview}</div>
-          </div>
-          
-          <span class="label">Curriculum</span>
-          <ul class="curriculum">
-            ${course.curriculum.map(m => `<li>${m}</li>`).join("")}
-          </ul>
+          ${statusBadge}
+          <h3 class="card-title">${course.name}</h3>
+          <span class="label">Overview</span>
+          <p class="overview">${course.overview}</p>
+          <span class="label">Includes</span>
+          <ul class="curriculum">${course.curriculum.map(c => `<li>${c}</li>`).join("")}</ul>
         </div>
-
         <div class="card-footer">
-          <div class="price-area">
-            <span class="price-label">Full Access</span>
-            <div class="price-val">$${course.price}<small>.00</small></div>
+          <div class="price-row">
+            <span style="color:var(--text-muted); font-size:0.9rem;">Course Fee</span>
+            <span class="price">$${course.price}</span>
           </div>
-          ${button}
+          ${actionBtn}
         </div>
       </div>
     `;
   });
-});
+}
 
-/* 🧾 INVOICE LOGIC (FIXED) */
-window.createInvoice = async (courseName, price) => {
-  const user = auth.currentUser;
-  if (!user) return;
-
-  if (!confirm(`Confirm enrollment for:\n${courseName}\nPrice: $${price}`)) return;
-
-  const existingQ = query(collection(db,"payments"), where("studentId","==",user.uid), where("courseName","==",courseName), where("status","==","pending"));
-  const existingSnap = await getDocs(existingQ);
-
-  if (!existingSnap.empty) {
-    const existingId = existingSnap.docs[0].id;
-    // FIX: Passing data in URL
-    window.location.href = `student-details.html?invoiceId=${existingId}&name=${encodeURIComponent(courseName)}&price=${price}`;
-    return;
-  }
-
-  const docRef = await addDoc(collection(db,"payments"), {
-    studentId: user.uid,
-    studentName: user.displayName || "Student",
-    email: user.email,
-    courseName,
-    price,
-    paymentMethod: "Manual",
-    invoiceNumber: `FBA-${Date.now()}`,
-    status: "pending",
-    createdAt: serverTimestamp()
-  });
-
-  // FIX: Passing data in URL
-  window.location.href = `student-details.html?invoiceId=${docRef.id}&name=${encodeURIComponent(courseName)}&price=${price}`;
+window.enroll = (name, price) => {
+  window.location.href = `student-details.html?name=${encodeURIComponent(name)}&price=${price}`;
 };
 
-window.cancelInvoice = async (invoiceId) => {
-  if (!confirm("Are you sure you want to cancel this pending invoice?")) return;
-  await deleteDoc(doc(db,"payments",invoiceId));
-  location.reload();
-};
-
-window.startCourse = (courseName) => {
-  const coursePages = {
-    "Management": "management_course.html",
-    "Food Business Management Course": "course-food-business-management.html",
-    "Financial Management for Food Processors": "course-financial-management.html",
-    "Food Value Addition Course for Farmers": "course-value-addition.html",
-    "New Product Development and Management": "course-product-development.html"
-  };
-  const page = coursePages[courseName];
-  if (page) window.location.href = page;
-  else alert("Error: Course page not linked.");
+window.openCourse = (name) => {
+  alert("Opening " + name);
 };
 </script>
-</body>
-</html>
