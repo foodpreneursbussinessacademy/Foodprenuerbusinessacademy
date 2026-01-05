@@ -4,12 +4,14 @@
 <meta charset="UTF-8" />
 <title>Payment Preview - Food Business Academy</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- Fonts & PDF Library -->
+
+<!-- 1. EXTERNAL LIBRARIES -->
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+<!-- 2. CSS STYLES -->
 <style>
-/* --- CSS STYLES --- */
+/* --- VARIABLES & RESET --- */
 :root {
     --primary: #4f46e5;
     --secondary: #7c3aed;
@@ -29,11 +31,12 @@ body {
     align-items: center;
     min-height: 100vh;
     padding: 20px;
-    opacity: 0;
+    opacity: 0; /* Hidden to prevent flash */
     transition: opacity 0.5s ease;
 }
 body.loaded { opacity: 1; }
 
+/* --- MAIN CARD --- */
 .container {
     width: 100%;
     max-width: 500px;
@@ -76,7 +79,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 .detail-row span.label { color: var(--text-light); font-weight: 500; }
 .detail-row span.value { font-weight: 600; color: var(--primary); text-align: right; }
 
-/* Payment Selection */
+/* Payment Selection Grid */
 .payment-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -124,7 +127,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
 }
 
-/* --- INVOICE MODAL STYLES --- */
+/* --- INVOICE MODAL OVERLAY --- */
 #invoice-modal-overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.8); z-index: 100000;
@@ -166,20 +169,20 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     font-family: 'Courier New', Courier, monospace;
 }
 
-/* Header */
+/* Invoice Header */
 .inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; position: relative; z-index: 1; }
 .inv-logo img { height: 80px; width: auto; object-fit: contain; }
 .inv-title { text-align: right; }
 .inv-title h2 { margin: 0; color: #222; font-size: 32px; letter-spacing: 2px; }
 .inv-meta { margin-top: 10px; font-size: 14px; color: #666; }
 
-/* Table */
+/* Invoice Table */
 .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; position: relative; z-index: 1; }
 .inv-table th { text-align: left; background: #f8f9fa; padding: 12px; font-size: 12px; text-transform: uppercase; color: #555; border-bottom: 2px solid #ddd; }
 .inv-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; vertical-align: middle; }
 .inv-total-row td { border-top: 2px solid #333; font-weight: 700; font-size: 16px; color: #000; }
 
-/* Payment Boxes */
+/* Invoice Payment Boxes */
 .pay-box { background: #f0f7ff; border: 1px solid #cce5ff; border-radius: 8px; padding: 20px; margin-bottom: 20px; position: relative; z-index: 1; }
 .pay-header { font-weight: 700; color: #004085; margin-bottom: 10px; font-size: 15px; border-bottom: 1px solid #b8daff; padding-bottom: 5px; display: block; }
 .pay-details { font-size: 14px; line-height: 1.6; color: #333; }
@@ -190,7 +193,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 
 .inv-footer { text-align: center; font-size: 12px; color: #777; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; position: relative; z-index: 1; }
 
-/* Invoice Actions */
+/* Invoice Actions (Buttons) */
 .inv-actions {
     background: #f1f1f1;
     padding: 15px 40px;
@@ -209,7 +212,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 
 <body>
 
-<!-- MAIN CONTAINER -->
+<!-- 3. MAIN CONTAINER -->
 <div class="container">
     <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" alt="Logo" class="logo-img">
     
@@ -249,7 +252,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     <button type="button" class="main-btn" onclick="proceedPayment()">Generate Invoice & Pay</button>
 </div>
 
-<!-- INVOICE MODAL -->
+<!-- 4. INVOICE MODAL -->
 <div id="invoice-modal-overlay">
   <div id="invoice-container">
     <div id="invoice-content">
@@ -326,13 +329,14 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
   </div>
 </div>
 
-<!-- FIREBASE SCRIPTS (Compat) -->
+<!-- 5. FIREBASE SCRIPTS -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+<!-- 6. JAVASCRIPT LOGIC -->
 <script>
-// --- 1. CONFIGURATION ---
+// --- A. CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
   authDomain: "students-login-29409.firebaseapp.com",
@@ -349,133 +353,27 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-// --- 2. GET URL DATA & VARIABLES ---
+// --- B. DATA EXTRACTION (CRITICAL STEP) ---
+// This retrieves the course details directly from the URL (e.g., payment.html?name=Baking&price=50)
 const urlParams = new URLSearchParams(window.location.search);
-const courseName = urlParams.get('name') || localStorage.getItem("courseName");
-const coursePrice = urlParams.get('price') || localStorage.getItem("coursePrice");
-let studentEmail = "";
-let studentId = "";
-let studentName = "";
 
-// Show Loading Data immediately
+// 1. Try URL parameters
+let courseName = urlParams.get('name');
+let coursePrice = urlParams.get('price');
+
+// 2. If not in URL, try LocalStorage (Backup)
+if (!courseName) {
+    courseName = localStorage.getItem("courseName") || "Unknown Course";
+}
+if (!coursePrice) {
+    coursePrice = localStorage.getItem("coursePrice") || "0.00";
+}
+
+// 3. Save to LocalStorage immediately so it persists on reload
+if(courseName) localStorage.setItem("courseName", courseName);
+if(coursePrice) localStorage.setItem("coursePrice", coursePrice);
+
+// 4. Update the UI Card
 if(document.getElementById("displayCourse")) {
-    document.getElementById("displayCourse").textContent = courseName || "Loading...";
-    document.getElementById("displayPrice").textContent = "$" + (coursePrice || "0.00");
-}
-
-// --- 3. MAIN LOGIC (AUTH & PRE-CHECK) ---
-firebase.auth().onAuthStateChanged((user) => {
-    if (user) {
-        // Capture User Details for Storage
-        studentEmail = user.email;
-        studentId = user.uid;
-        studentName = user.displayName || localStorage.getItem("studentName") || "Student";
-        
-        document.getElementById("displayEmail").textContent = studentEmail;
-
-        // --- DISABLED AUTOMATIC REDIRECTS FOR DEBUGGING ---
-        if (!courseName || courseName === "N/A" || !coursePrice) {
-            console.warn("Missing course data. Redirect prevented for debugging.");
-             // window.location.href = "student.html"; // DISABLED
-        }
-
-        const docRef = db.collection("enrollments").doc(studentEmail);
-        docRef.get().then((doc) => {
-            if (doc.exists) {
-                const data = doc.data();
-                if (data[courseName] === "active" || data[courseName] === "paid") {
-                    console.log("Course status: Active/Paid. Redirect prevented for debugging.");
-                    // window.location.href = "student.html"; // DISABLED
-                }
-            }
-            document.body.classList.add('loaded');
-        }).catch((error) => {
-            console.log("Error checking enrollment:", error);
-            document.body.classList.add('loaded');
-        });
-
-    } else {
-        // Not logged in - Still redirect to login
-        window.location.href = "index.html";
-    }
-});
-
-// --- 4. PAYMENT & INVOICE LOGIC ---
-function selectPayment(methodValue, cardElement) {
-    document.getElementById("method").value = methodValue;
-    const cards = document.querySelectorAll('.payment-card');
-    cards.forEach(card => card.classList.remove('active'));
-    cardElement.classList.add('active');
-}
-
-function proceedPayment(){
-    const method = document.getElementById("method").value;
-    const invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
-    const dateStr = new Date().toLocaleDateString();
-
-    // --- UPGRADED STORAGE LOGIC: 'payments' Collection ---
-    if(studentEmail && courseName) {
-        
-        // The Object Format You Requested
-        const paymentData = {
-            courseName: courseName,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            email: studentEmail,
-            invoiceNumber: invNumber,
-            paymentMethod: method,
-            price: coursePrice,
-            status: "pending",
-            studentId: studentId,
-            studentName: studentName
-        };
-
-        // Write to Firestore: collection "payments", document ID "invoiceNumber"
-        db.collection("payments").doc(invNumber).set(paymentData)
-        .then(() => {
-            console.log("Payment record successfully created in 'payments' collection.");
-        })
-        .catch((error) => {
-            console.error("Error writing payment document: ", error);
-            alert("Error saving payment: " + error.message);
-        });
-
-        // Backup to LocalStorage
-        const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
-        if(!statusData[studentEmail]) statusData[studentEmail] = {};
-        statusData[studentEmail][courseName] = "pending";
-        localStorage.setItem("courseStatus", JSON.stringify(statusData));
-    }
-
-    // --- POPULATE INVOICE MODAL ---
-    document.getElementById("inv-num").textContent = invNumber;
-    document.getElementById("inv-date").textContent = dateStr;
-    document.getElementById("inv-method").textContent = method;
-    document.getElementById("inv-course-name").textContent = courseName;
-    document.getElementById("inv-course-price").textContent = "$" + coursePrice;
-    document.getElementById("inv-final-total").textContent = "$" + coursePrice;
-
-    // --- SHOW MODAL ---
-    document.getElementById("invoice-modal-overlay").style.display = "flex";
-}
-
-// --- 5. FINISH & REDIRECT ---
-function finishAndRedirect() {
-    window.location.href = "courses.html";
-}
-
-// --- 6. DOWNLOAD PDF ---
-function downloadPDF(){
-    const element = document.getElementById('invoice-content');
-    const invNum = document.getElementById("inv-num").textContent;
-    const opt = {
-        margin: 0.5,
-        filename: `Invoice-${invNum}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-    };
-    html2pdf().set(opt).from(element).save();
-}
-</script>
-</body>
-    </html>
+    document.getElementById("displayCourse").textContent = courseName;
+    document.getElem
