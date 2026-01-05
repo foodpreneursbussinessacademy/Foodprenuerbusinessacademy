@@ -1,156 +1,466 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>Payment Preview - Food Business Academy</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- 1. FONTS & LIBRARIES -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+<!-- Using html2pdf for better invoice generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
-body{
-  font-family:'Poppins',sans-serif;
-  background:#f4f6fb;
-  padding:20px;
+/* --- 2. RESTYLED CSS (Modern & Clean) --- */
+:root {
+    --primary: #4f46e5;
+    --secondary: #7c3aed;
+    --gradient: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    --bg-color: #f3f4f6;
+    --card-bg: #ffffff;
+    --text-dark: #1f2937;
+    --text-light: #6b7280;
 }
-.container{
-  max-width:480px;
-  margin:auto;
-  background:#fff;
-  padding:20px;
-  border-radius:16px;
-  box-shadow:0 8px 25px rgba(0,0,0,0.08);
-}
-h2{text-align:center;margin-bottom:15px;}
-p{margin:6px 0;font-size:14px;}
 
-select,button{
-  width:100%;
-  padding:12px;
-  margin-top:12px;
-  border-radius:10px;
-  border:1px solid #ddd;
-}
-button{
-  background:#2563eb;
-  color:#fff;
-  font-weight:600;
-  border:none;
-  cursor:pointer;
-}
-button:hover{background:#6d28d9}
+* { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
 
-#invoicePopup{
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.6);
-  z-index:9999;
+body { 
+    font-family: 'Poppins', sans-serif; 
+    background: var(--bg-color); 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    min-height: 100vh; 
+    padding: 20px;
 }
-#invoiceBox{
-  background:#fff;
-  max-width:420px;
-  margin:10% auto;
-  padding:20px;
-  border-radius:16px;
+
+/* Main Card */
+.container { 
+    width: 100%; 
+    max-width: 500px; 
+    background: var(--card-bg); 
+    padding: 40px 30px; 
+    border-radius: 20px; 
+    box-shadow: 0 20px 40px rgba(79, 70, 229, 0.15); 
+    text-align: center;
+    border-top: 5px solid var(--secondary);
 }
-.greenBtn{background:#22c55e;}
-.blueBtn{background:#0ea5e9;}
+
+.logo-img {
+    max-width: 150px;
+    margin-bottom: 20px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 5px; }
+.sub-text { font-size: 14px; color: var(--text-light); margin-bottom: 25px; }
+
+/* Details Section */
+.details-box {
+    background: #f9fafb;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+    text-align: left;
+    border: 1px dashed #d1d5db;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 15px;
+    color: var(--text-dark);
+}
+.detail-row span.label { color: var(--text-light); font-weight: 500; }
+.detail-row span.value { font-weight: 600; color: var(--primary); text-align: right; }
+
+/* Payment Methods */
+.payment-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+
+.payment-card {
+    background: #fff;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 80px;
+    position: relative;
+    overflow: hidden;
+}
+
+.payment-card img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+.payment-card.active {
+    border-color: var(--secondary);
+    background: #f5f3ff;
+}
+.payment-card.active::after {
+    content: '✔';
+    position: absolute;
+    top: 2px; right: 5px; font-size: 12px; color: var(--secondary); font-weight: bold;
+}
+
+.main-btn {
+    width: 100%;
+    padding: 16px;
+    background: var(--gradient);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+}
+
+/* --- INVOICE MODAL --- */
+#invoice-modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8); z-index: 100000;
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(5px);
+    overflow-y: auto;
+    padding: 20px;
+}
+
+#invoice-container {
+    background: #fff;
+    width: 100%; max-width: 700px;
+    color: #333;
+    border-radius: 4px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    position: relative;
+    max-height: 90vh;
+    display: flex; flex-direction: column;
+}
+
+#invoice-scroll-area { padding: 40px; overflow-y: auto; }
+
+/* Unpaid Watermark */
+.unpaid-stamp {
+    position: absolute;
+    top: 40%; left: 50%;
+    transform: translate(-50%, -50%) rotate(-25deg);
+    color: #c0392b;
+    border: 4px solid #c0392b;
+    padding: 10px 40px;
+    font-size: 3rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 5px;
+    opacity: 0.25;
+    pointer-events: none;
+    z-index: 0;
+    border-radius: 8px;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+/* Invoice Header */
+.inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; position: relative; z-index: 1; }
+.inv-logo img { height: 80px; width: auto; object-fit: contain; }
+.inv-title { text-align: right; }
+.inv-title h2 { margin: 0; color: #222; font-size: 32px; letter-spacing: 2px; }
+.inv-meta { margin-top: 10px; font-size: 14px; color: #666; }
+
+/* Invoice Table */
+.inv-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; position: relative; z-index: 1; }
+.inv-table th { text-align: left; background: #f8f9fa; padding: 12px; font-size: 12px; text-transform: uppercase; color: #555; border-bottom: 2px solid #ddd; }
+.inv-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; vertical-align: middle; }
+.inv-total-row td { border-top: 2px solid #333; font-weight: 700; font-size: 16px; color: #000; }
+
+/* Payment Details Boxes */
+.pay-box { background: #f0f7ff; border: 1px solid #cce5ff; border-radius: 8px; padding: 20px; margin-bottom: 20px; position: relative; z-index: 1; }
+.pay-header { font-weight: 700; color: #004085; margin-bottom: 10px; font-size: 15px; border-bottom: 1px solid #b8daff; padding-bottom: 5px; display: block; }
+.pay-details { font-size: 14px; line-height: 1.6; color: #333; }
+.pay-label { font-weight: 600; color: #555; min-width: 100px; display: inline-block; }
+
+.proof-box { background: #fff8f0; border-color: #ffeeba; }
+.proof-header { color: #856404; }
+
+.inv-footer { text-align: center; font-size: 12px; color: #777; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; position: relative; z-index: 1; }
+
+/* Invoice Buttons */
+.inv-actions {
+    background: #f1f1f1;
+    padding: 15px 40px;
+    border-top: 1px solid #ddd;
+    display: flex; justify-content: flex-end; gap: 12px;
+    border-radius: 0 0 4px 4px;
+}
+.inv-btn { padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.btn-close-inv { background: #4f46e5; color: #fff; } /* Primary Color */
+.btn-close-inv:hover { background: #4338ca; }
+.btn-download { background: #10b981; color: #fff; display: flex; align-items: center; gap: 5px;}
+.btn-download:hover { background: #059669; }
 </style>
 </head>
 
 <body>
 
+<!-- 3. MAIN UI CONTAINER -->
 <div class="container">
-  <h2>Payment Preview</h2>
+    <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" alt="Logo" class="logo-img">
+    
+    <h2>Enrollment Summary</h2>
+    <p class="sub-text">Please review your details and select a payment method.</p>
+    
+    <div class="details-box">
+        <div class="detail-row">
+            <span class="label">Email:</span>
+            <span class="value" id="displayEmail">Loading...</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Course:</span>
+            <span class="value" id="displayCourse">Loading...</span>
+        </div>
+        <div class="detail-row" style="border-top: 1px solid #e5e7eb; padding-top: 10px; margin-top: 10px;">
+            <span class="label">Total Amount:</span>
+            <span class="value" style="font-size: 18px;" id="displayPrice">...</span>
+        </div>
+    </div>
 
-  <p><strong>Name:</strong> <span id="name"></span></p>
-  <p><strong>Email:</strong> <span id="email"></span></p>
-  <p><strong>Course:</strong> <span id="course"></span></p>
-  <p><strong>Amount:</strong> $<span id="price"></span></p>
-
-  <select id="method">
-    <option value="Ecocash">Ecocash</option>
-    <option value="Bank Transfer">Bank Transfer</option>
-    <option value="One Money">One Money</option>
-  </select>
-
-  <button type="button" onclick="proceedPayment()">Proceed to Payment</button>
+    <div style="text-align:left; font-weight:600; margin-bottom:10px;">Select Payment Method:</div>
+    <input type="hidden" id="method" value="Ecocash">
+    
+    <div class="payment-grid">
+        <div class="payment-card active" onclick="selectPayment('Ecocash', this)">
+            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhCOPxJALDl8rinCr4j5gKvHQCpFn5RjSNX4o2ZgKZdus_g_naLRz35VcSQknCqVYUWWrhpmE_f3OOPgnjByqIM4JFYeB_0ZKCQxlRgesgK5PoPxo4JjacOmrmyTXpzf-bAfc6ZEt8_88LFQZEEUN1p9yb-zdoqKA8UrGntxMjWrC6dcYZQi0rK3i27jDOa/s1600/EcoCash%20%281%29.png" alt="Ecocash">
+        </div>
+        <div class="payment-card" onclick="selectPayment('Bank Transfer', this)">
+            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEitQyz359bQN-qUKKbaBPz0pEF11jeXScTl4rmkmeWpLqLFnm42tZ6eolAZJVx1kdGxo8gxgtLKPWOJZ1l4A_yr3HQXk4gar_xvwrQg6UXRQBzfzmN4b4wNsvbdmrK8_56qX2p1vAQFckXv-S2e-6C78GtoLe1T3J156Pq8kz17imMQX8SjF9CSpl4Txujj/s1600/%5BCITYPNG.COM%5DMasterCard%20&%20Visa%20Cards%20Logos%20Icons%20-%201500x1500.png" alt="Bank">
+        </div>
+        <div class="payment-card" onclick="selectPayment('One Money', this)">
+            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgBFwR6y4tJP-_NQ_l2TspkmOZOd4c4lHPbTjhqdD_r68NAdzPTZxjW7Ns1ZcMQMch1b8yd1HMzcw7EKkdyJDxUwfNgsdRDZJnMy16a2ldFRV95MOsiqelfNMlsV9L_dXgow0019mQ9uNa6DTSYGYCB6xYXVhaur-1AGfnqalmHqesEG0z-XViwC81MwON1/s1600/2d0d78c7-f8c3-4169-8a6c-81b036eb2796.jpg" alt="OneMoney">
+        </div>
+    </div>
+    
+    <button type="button" class="main-btn" onclick="proceedPayment()">Generate Invoice & Pay</button>
 </div>
 
-<!-- INVOICE POPUP -->
-<div id="invoicePopup">
-  <div id="invoiceBox">
-    <h3>Payment Invoice</h3>
-    <p><strong>Invoice No:</strong> <span id="invoiceNo"></span></p>
+<!-- 4. INVOICE MODAL -->
+<div id="invoice-modal-overlay">
+  <div id="invoice-container">
+    <div id="invoice-content">
+      <div id="invoice-scroll-area">
+        <div class="unpaid-stamp">UNPAID</div>
+        
+        <div class="inv-header">
+          <div class="inv-logo">
+            <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" alt="Company Logo" />
+          </div>
+          <div class="inv-title">
+            <h2>INVOICE</h2>
+            <div class="inv-meta">
+              <strong>Inv #:</strong> <span id="inv-num">Loading...</span><br />
+              <strong>Date:</strong> <span id="inv-date">Loading...</span><br/>
+              <strong>Method:</strong> <span id="inv-method">...</span>
+            </div>
+          </div>
+        </div>
 
-    <p id="invoiceDetails"></p>
+        <div style="margin-bottom:20px;">
+            <strong>Bill To:</strong> <span id="inv-student-name">...</span>
+        </div>
 
-    <p><strong>Payment Instructions</strong></p>
-    <p>
-      🏦 Bank: CBZ / FBC<br>
-      💰 Ecocash: 0773371163<br>
-      📱 One Money: 0718625498<br>
-      📌 Reference: Invoice Number
-    </p>
+        <table class="inv-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th width="100">Type</th>
+              <th width="100" style="text-align:right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td id="inv-course-name">Course Name</td>
+              <td>Online Course</td>
+              <td id="inv-course-price" style="text-align:right">$0.00</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr class="inv-total-row">
+              <td colspan="2" style="text-align:right;">Grand Total:</td>
+              <td id="inv-final-total" style="text-align:right">$0.00</td>
+            </tr>
+          </tfoot>
+        </table>
 
-    <button class="blueBtn" onclick="downloadPDF()">Download Invoice PDF</button>
-    <button class="greenBtn" onclick="goBack()">Back to Courses</button>
+        <div class="pay-box">
+          <span class="pay-header">PAYMENT INSTRUCTIONS</span>
+          <div class="pay-details">
+            <div><span class="pay-label">One Money:</span> 0718625498</div>
+            <div><span class="pay-label">Ecocash:</span> 0773371163</div>
+            <div><span class="pay-label">Bank Acc:</span> FBC / CBZ Academy Account</div>
+          </div>
+        </div>
+
+        <div class="pay-box proof-box">
+            <span class="pay-header proof-header">PROOF OF PAYMENT</span>
+            <div class="pay-details">
+              Please send proof of payment to:
+              <div style="margin-top:5px;"><strong>WhatsApp:</strong> +263 773 371 163</div>
+              <div><strong>Email:</strong> petronela.hr@foodbusinessac.co.zw</div>
+            </div>
+        </div>
+
+        <div class="inv-footer">
+          Thank you for your business! Food Business Academy.
+        </div>
+      </div>
+    </div>
+    <div class="inv-actions">
+      <button class="inv-btn btn-close-inv" onclick="finishAndRedirect()">Finish & Return to Courses</button>
+      <button class="inv-btn btn-download" onclick="downloadPDF()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Download PDF
+      </button>
+    </div>
   </div>
 </div>
 
+<!-- 5. FIREBASE SCRIPTS -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<!-- 6. LOGIC -->
 <script>
-const name  = localStorage.getItem("studentName") || "";
-const email = localStorage.getItem("studentEmail") || "";
+// --- A. CONFIGURATION ---
+const firebaseConfig = {
+  apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+  authDomain: "students-login-29409.firebaseapp.com",
+  projectId: "students-login-29409",
+  storageBucket: "students-login-29409.firebasestorage.app",
+  messagingSenderId: "634331456872",
+  appId: "1:634331456872:web:6dae360c5e28d8356562dd",
+  measurementId: "G-96XXYG1VR2"
+};
 
-const course = localStorage.getItem("courseName") || "";
-const price  = localStorage.getItem("coursePrice") || "";
+// Initialize Firebase
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.firestore();
 
-const invoiceNumber = "FBA-" + Date.now();
+// --- B. GET DATA (Fixing "Unknown" issues) ---
+const urlParams = new URLSearchParams(window.location.search);
+let courseName = urlParams.get('name');
+let coursePrice = urlParams.get('price');
 
-document.getElementById("name").textContent = name;
-document.getElementById("email").textContent = email;
-document.getElementById("course").textContent = course;
-document.getElementById("price").textContent = price;
-document.getElementById("invoiceNo").textContent = invoiceNumber;
+// Backup: Load from LocalStorage if not in URL
+if (!courseName) courseName = localStorage.getItem("courseName") || "Unknown Course";
+if (!coursePrice) coursePrice = localStorage.getItem("coursePrice") || "0.00";
+
+// SAVE immediately so it persists on reload
+if(courseName) localStorage.setItem("courseName", courseName);
+if(coursePrice) localStorage.setItem("coursePrice", coursePrice);
+
+// Update UI
+if(document.getElementById("displayCourse")) {
+    document.getElementById("displayCourse").textContent = courseName;
+    document.getElementById("displayPrice").textContent = "$" + coursePrice;
+}
+
+// Global Variables
+let studentEmail = "";
+let studentId = "";
+let studentName = "";
+
+// --- C. AUTH CHECK ---
+firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+        studentEmail = user.email;
+        studentId = user.uid;
+        studentName = user.displayName || localStorage.getItem("studentName") || "Student";
+        
+        document.getElementById("displayEmail").textContent = studentEmail;
+    } else {
+        // Not logged in -> Login
+        window.location.href = "index.html";
+    }
+});
+
+// --- D. PAYMENT FUNCTIONS ---
+function selectPayment(methodValue, cardElement) {
+    document.getElementById("method").value = methodValue;
+    const cards = document.querySelectorAll('.payment-card');
+    cards.forEach(card => card.classList.remove('active'));
+    cardElement.classList.add('active');
+}
 
 function proceedPayment(){
-  /* STORE COURSE STATUS */
-  const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
-  if(!statusData[email]) statusData[email] = {};
-  statusData[email][course] = "pending";
-  localStorage.setItem("courseStatus", JSON.stringify(statusData));
+    const method = document.getElementById("method").value;
+    const invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
+    const dateStr = new Date().toLocaleDateString();
 
-  document.getElementById("invoiceDetails").innerHTML = `
-    <strong>Name:</strong> ${name}<br>
-    <strong>Email:</strong> ${email}<br>
-    <strong>Course:</strong> ${course}<br>
-    <strong>Amount:</strong> $${price}<br>
-    <strong>Status:</strong> Pending Payment
-  `;
+    if(studentEmail && courseName) {
+        // 1. SAVE TO FIRESTORE (payments) - Your Specific Fields
+        const paymentData = {
+            courseName: courseName,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            email: studentEmail,
+            invoiceNumber: invNumber,
+            paymentMethod: method,
+            price: coursePrice,
+            status: "pending", 
+            studentId: studentId,
+            studentName: studentName
+        };
 
-  document.getElementById("invoicePopup").style.display = "block";
+        db.collection("payments").doc(invNumber).set(paymentData)
+        .then(() => console.log("Payment recorded to Firestore."))
+        .catch((error) => console.error("Error:", error));
+
+        // 2. SAVE TO LOCAL STORAGE (Your Original Logic for courses.html)
+        const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
+        if(!statusData[studentEmail]) statusData[studentEmail] = {};
+        statusData[studentEmail][courseName] = "pending";
+        localStorage.setItem("courseStatus", JSON.stringify(statusData));
+    }
+
+    // 3. SHOW INVOICE
+    document.getElementById("inv-num").textContent = invNumber;
+    document.getElementById("inv-date").textContent = dateStr;
+    document.getElementById("inv-method").textContent = method;
+    document.getElementById("inv-student-name").textContent = studentName;
+
+    document.getElementById("inv-course-name").textContent = courseName;
+    document.getElementById("inv-course-price").textContent = "$" + coursePrice;
+    document.getElementById("inv-final-total").textContent = "$" + coursePrice;
+
+    document.getElementById("invoice-modal-overlay").style.display = "flex";
+}
+
+// --- E. FINISH & DOWNLOAD ---
+function finishAndRedirect() {
+    // Go back to courses page
+    window.location.href = "courses.html";
 }
 
 function downloadPDF(){
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  doc.setFontSize(16);
-  doc.text("Food Business Academy",20,20);
-  doc.setFontSize(12);
-  doc.text(`Invoice No: ${invoiceNumber}`,20,35);
-  doc.text(`Name: ${name}`,20,45);
-  doc.text(`Course: ${course}`,20,55);
-  doc.text(`Amount: $${price}`,20,65);
-  doc.text("Status: Pending Payment",20,80);
-  doc.save(`${invoiceNumber}.pdf`);
-}
-
-function goBack(){
-  window.location.href = "courses.html";
+    const element = document.getElementById('invoice-content');
+    const invNum = document.getElementById("inv-num").textContent;
+    const opt = {
+        margin: 0.5,
+        filename: `Invoice-${invNum}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
 }
 </script>
-
 </body>
-</html>
+              </html>
