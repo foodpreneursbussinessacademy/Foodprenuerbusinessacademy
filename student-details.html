@@ -140,6 +140,10 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
   <script>
     // 1. CONFIG
     const firebaseConfig = {
@@ -172,14 +176,17 @@
             currentUid = user.uid;
             document.getElementById('studentEmail').value = user.email;
             
-            // Optional: Try to fetch name from existing profile to save typing
-            // This assumes you have a 'students' collection
-            const doc = await db.collection('students').doc(user.uid).get();
-            if(doc.exists && doc.data().fullName){
-                document.getElementById('studentName').value = doc.data().fullName;
-            }
-            if(doc.exists && doc.data().phone){
-                document.getElementById('studentPhone').value = doc.data().phone;
+            // Optional: Fetch existing details
+            try {
+                const doc = await db.collection('students').doc(user.uid).get();
+                if(doc.exists && doc.data().fullName){
+                    document.getElementById('studentName').value = doc.data().fullName;
+                }
+                if(doc.exists && doc.data().phone){
+                    document.getElementById('studentPhone').value = doc.data().phone;
+                }
+            } catch (e) {
+                console.log("Could not auto-fill details", e);
             }
         } else {
             // Not logged in? Send back to login
@@ -187,8 +194,8 @@
         }
     });
 
-    // 4. SUBMIT & REDIRECT
-    document.getElementById('studentDetailsForm').addEventListener('submit', async function(event){
+    // 4. SUBMIT & REDIRECT (UPDATED)
+    document.getElementById('studentDetailsForm').addEventListener('submit', function(event){
       event.preventDefault();
       
       if(!currentUid || !courseName) {
@@ -198,44 +205,26 @@
 
       const btn = document.getElementById('submitBtn');
       const load = document.getElementById('loadingMsg');
+      
+      // Get values to pass to the next page
       const sName = document.getElementById('studentName').value;
       const sPhone = document.getElementById('studentPhone').value;
       const sEmail = document.getElementById('studentEmail').value;
 
+      // Show loading state
       btn.disabled = true;
       btn.textContent = "Processing...";
       load.style.display = "block";
 
-      try {
-          // A. Generate a unique Invoice ID
-          const invoiceId = "FBA-" + Date.now().toString().slice(-6);
+      // --- GENERATE INVOICE ID (For display only, not saving to DB) ---
+      const invoiceId = "FBA-" + Date.now().toString().slice(-6);
 
-          // B. Create the Payment Record NOW (Status: Pending)
-          await db.collection("payments").doc(invoiceId).set({
-              invoiceNumber: invoiceId,
-              studentId: currentUid,
-              studentName: sName,
-              studentPhone: sPhone,
-              email: sEmail,
-              courseName: courseName,
-              price: coursePrice,
-              status: "pending",
-              paymentMethod: "Not Selected",
-              createdAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-
-          // C. Redirect to Payment Preview
-          // We pass the invoiceId so the next page knows which record to update
-          window.location.href = `payment-preview.html?invoiceId=${invoiceId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}`;
-
-      } catch (error) {
-          console.error("Error:", error);
-          alert("Something went wrong creating your enrollment. Please try again.");
-          btn.disabled = false;
-          btn.textContent = "Proceed to Payment →";
-          load.style.display = "none";
-      }
+      // --- DIRECT REDIRECT (No DB Write) ---
+      // We pass the student details in the URL so the next page can see them
+      setTimeout(() => {
+          const targetUrl = `payment-preview.html?invoiceId=${invoiceId}&name=${encodeURIComponent(courseName)}&price=${coursePrice}&studentName=${encodeURIComponent(sName)}&studentPhone=${encodeURIComponent(sPhone)}&email=${encodeURIComponent(sEmail)}`;
+          
+          window.location.href = targetUrl;
+      }, 500); // Small delay just for UX
     });
   </script>
-</body>
-</html>
