@@ -9,7 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
-/* --- 2. RESTYLED CSS (Modern & Clean) --- */
+/* --- CSS STYLES --- */
 :root {
     --primary: #4f46e5;
     --secondary: #7c3aed;
@@ -318,6 +318,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     </div>
     <div class="inv-actions">
       <button class="inv-btn btn-close-inv" onclick="finishAndRedirect()">Finish & Return to Courses</button>
+      
       <button class="inv-btn btn-download" onclick="downloadPDF()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
         Download PDF
@@ -342,7 +343,6 @@ const firebaseConfig = {
   measurementId: "G-96XXYG1VR2"
 };
 
-// Initialize Firebase
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
@@ -352,21 +352,17 @@ const db = firebase.firestore();
 const urlParams = new URLSearchParams(window.location.search);
 let courseName = urlParams.get('name');
 let coursePrice = urlParams.get('price');
-let existingInvoiceId = urlParams.get('invoiceId'); // Grab the ID from courses page
+let existingInvoiceId = urlParams.get('invoiceId');
 
 // Display Logic
 if (courseName && coursePrice) {
-    // If URL has data, display it and save to local storage as backup
     document.getElementById("displayCourse").textContent = courseName;
     document.getElementById("displayPrice").textContent = "$" + coursePrice;
-    
     localStorage.setItem("courseName", courseName);
     localStorage.setItem("coursePrice", coursePrice);
 } else {
-    // Fallback: Try LocalStorage
     courseName = localStorage.getItem("courseName") || "Unknown Course";
     coursePrice = localStorage.getItem("coursePrice") || "0.00";
-    
     document.getElementById("displayCourse").textContent = courseName;
     document.getElementById("displayPrice").textContent = "$" + coursePrice;
 }
@@ -382,11 +378,8 @@ firebase.auth().onAuthStateChanged((user) => {
         studentEmail = user.email;
         studentId = user.uid;
         studentName = user.displayName || localStorage.getItem("studentName") || "Student";
-        
         document.getElementById("displayEmail").textContent = studentEmail;
     } else {
-        // Not logged in -> Redirect to Login
-        // Note: Change 'index.html' to your actual login page if different
         window.location.href = "index.html"; 
     }
 });
@@ -402,29 +395,40 @@ function selectPayment(methodValue, cardElement) {
 function proceedPayment(){
     const method = document.getElementById("method").value;
     const dateStr = new Date().toLocaleDateString();
-    
-    // Use existing Invoice Number if available, otherwise generate new
     let invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
     
-    // UPDATE LOGIC:
-    // If we came from the courses page, we already have a DB document. 
-    // We should update THAT document instead of making a new one.
+    // 1. IMPORTANT: Update Local Storage IMMEDIATELY (For courses.html)
+    // This runs the exact logic from your Old Code first to ensure redirection works visually
+    if(studentEmail && courseName) {
+        const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
+        if(!statusData[studentEmail]) statusData[studentEmail] = {};
+        
+        statusData[studentEmail][courseName] = "pending"; // Mark as pending
+        localStorage.setItem("courseStatus", JSON.stringify(statusData));
+    }
+
+    // 2. Populate Invoice Modal UI
+    if(existingInvoiceId) invNumber = existingInvoiceId; // Use ID if exists
     
+    document.getElementById("inv-num").textContent = invNumber.substring(0, 15);
+    document.getElementById("inv-date").textContent = dateStr;
+    document.getElementById("inv-method").textContent = method;
+    document.getElementById("inv-student-name").textContent = studentName;
+    document.getElementById("inv-course-name").textContent = courseName;
+    document.getElementById("inv-course-price").textContent = "$" + coursePrice;
+    document.getElementById("inv-final-total").textContent = "$" + coursePrice;
+
+    // 3. Show Modal
+    document.getElementById("invoice-modal-overlay").style.display = "flex";
+
+    // 4. Update Firestore in the background
     if(studentEmail && courseName) {
         if(existingInvoiceId) {
-             // UPDATE Existing Invoice in Firestore
              db.collection("payments").doc(existingInvoiceId).update({
                 paymentMethod: method,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-             }).then(() => {
-                 console.log("Invoice Updated");
-                 // Fetch the specific invoice number from the doc if needed, 
-                 // but for UI speed we can just display the ID or a placeholder
              });
-             // For display purposes, use the ID or a short version
-             invNumber = existingInvoiceId; 
         } else {
-            // CREATE New Invoice (Fallback if accessed directly)
             const paymentData = {
                 courseName: courseName,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -438,30 +442,20 @@ function proceedPayment(){
             };
             db.collection("payments").doc(invNumber).set(paymentData);
         }
+    }
+}
 
-        // SAVE TO LOCAL STORAGE (Legacy support)
+// --- E. FINISH & REDIRECT ---
+function finishAndRedirect() {
+    // Double check local storage just in case
+    if(studentEmail && courseName) {
         const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
         if(!statusData[studentEmail]) statusData[studentEmail] = {};
         statusData[studentEmail][courseName] = "pending";
         localStorage.setItem("courseStatus", JSON.stringify(statusData));
     }
-
-    // --- POPULATE INVOICE MODAL ---
-    document.getElementById("inv-num").textContent = invNumber.substring(0, 10); // Shorten if it's a long ID
-    document.getElementById("inv-date").textContent = dateStr;
-    document.getElementById("inv-method").textContent = method;
-    document.getElementById("inv-student-name").textContent = studentName;
-
-    document.getElementById("inv-course-name").textContent = courseName;
-    document.getElementById("inv-course-price").textContent = "$" + coursePrice;
-    document.getElementById("inv-final-total").textContent = "$" + coursePrice;
-
-    // Show Modal
-    document.getElementById("invoice-modal-overlay").style.display = "flex";
-}
-
-// --- E. FINISH & DOWNLOAD ---
-function finishAndRedirect() {
+    
+    // Redirect to courses page
     window.location.href = "courses.html";
 }
 
