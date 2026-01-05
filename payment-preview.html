@@ -31,10 +31,8 @@ body {
     align-items: center;
     min-height: 100vh;
     padding: 20px;
-    opacity: 0; /* Hidden to prevent flash */
-    transition: opacity 0.5s ease;
+    /* Removed opacity:0 to prevent blank page issues */
 }
-body.loaded { opacity: 1; }
 
 /* --- MAIN CARD --- */
 .container {
@@ -353,27 +351,128 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-// --- B. DATA EXTRACTION (CRITICAL STEP) ---
-// This retrieves the course details directly from the URL (e.g., payment.html?name=Baking&price=50)
+// --- B. DATA EXTRACTION ---
+// Get params from URL (e.g., payment.html?name=Baking&price=50)
 const urlParams = new URLSearchParams(window.location.search);
-
-// 1. Try URL parameters
 let courseName = urlParams.get('name');
 let coursePrice = urlParams.get('price');
 
-// 2. If not in URL, try LocalStorage (Backup)
-if (!courseName) {
-    courseName = localStorage.getItem("courseName") || "Unknown Course";
-}
-if (!coursePrice) {
-    coursePrice = localStorage.getItem("coursePrice") || "0.00";
-}
+// Backup: Load from LocalStorage if not in URL
+if (!courseName) courseName = localStorage.getItem("courseName") || "Unknown Course";
+if (!coursePrice) coursePrice = localStorage.getItem("coursePrice") || "0.00";
 
-// 3. Save to LocalStorage immediately so it persists on reload
+// Save to LocalStorage immediately
 if(courseName) localStorage.setItem("courseName", courseName);
 if(coursePrice) localStorage.setItem("coursePrice", coursePrice);
 
-// 4. Update the UI Card
+// Update UI
 if(document.getElementById("displayCourse")) {
     document.getElementById("displayCourse").textContent = courseName;
-    document.getElem
+    document.getElementById("displayPrice").textContent = "$" + coursePrice;
+}
+
+// Global Variables
+let studentEmail = "";
+let studentId = "";
+let studentName = "";
+
+// --- C. AUTH & STATUS CHECK ---
+firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+        studentEmail = user.email;
+        studentId = user.uid;
+        studentName = user.displayName || localStorage.getItem("studentName") || "Student";
+        
+        document.getElementById("displayEmail").textContent = studentEmail;
+
+        // CHECK IF ALREADY ACTIVE/PAID
+        const docRef = db.collection("enrollments").doc(studentEmail);
+        docRef.get().then((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                // ONLY redirect if the Admin has approved it (Active/Paid)
+                if (data[courseName] === "active" || data[courseName] === "paid") {
+                    console.log("Course is Active/Paid. Redirecting...");
+                    window.location.href = "student.html";
+                    return; 
+                }
+            }
+        }).catch((error) => console.log(error));
+
+    } else {
+        // Not logged in -> Login
+        window.location.href = "index.html";
+    }
+});
+
+// --- D. PAYMENT FUNCTIONS ---
+function selectPayment(methodValue, cardElement) {
+    document.getElementById("method").value = methodValue;
+    const cards = document.querySelectorAll('.payment-card');
+    cards.forEach(card => card.classList.remove('active'));
+    cardElement.classList.add('active');
+}
+
+function proceedPayment(){
+    const method = document.getElementById("method").value;
+    const invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
+    const dateStr = new Date().toLocaleDateString();
+
+    if(studentEmail && courseName) {
+        // 1. SAVE TO FIRESTORE (payments)
+        const paymentData = {
+            courseName: courseName,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            email: studentEmail,
+            invoiceNumber: invNumber,
+            paymentMethod: method,
+            price: coursePrice,
+            status: "pending", 
+            studentId: studentId,
+            studentName: studentName
+        };
+
+        db.collection("payments").doc(invNumber).set(paymentData)
+        .then(() => console.log("Payment recorded."))
+        .catch((error) => console.error("Error:", error));
+
+        // 2. SAVE TO LOCAL STORAGE (Your Original Logic)
+        // This ensures courses.html shows "Pending Payment"
+        const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
+        if(!statusData[studentEmail]) statusData[studentEmail] = {};
+        statusData[studentEmail][courseName] = "pending";
+        localStorage.setItem("courseStatus", JSON.stringify(statusData));
+    }
+
+    // 3. SHOW INVOICE
+    document.getElementById("inv-num").textContent = invNumber;
+    document.getElementById("inv-date").textContent = dateStr;
+    document.getElementById("inv-method").textContent = method;
+    document.getElementById("inv-course-name").textContent = courseName;
+    document.getElementById("inv-course-price").textContent = "$" + coursePrice;
+    document.getElementById("inv-final-total").textContent = "$" + coursePrice;
+
+    document.getElementById("invoice-modal-overlay").style.display = "flex";
+}
+
+// --- E. FINISH & DOWNLOAD ---
+function finishAndRedirect() {
+    // Go back to courses page (which reads 'courseStatus' from localStorage)
+    window.location.href = "courses.html";
+}
+
+function downloadPDF(){
+    const element = document.getElementById('invoice-content');
+    const invNum = document.getElementById("inv-num").textContent;
+    const opt = {
+        margin: 0.5,
+        filename: `Invoice-${invNum}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+}
+</script>
+</body>
+</html>
