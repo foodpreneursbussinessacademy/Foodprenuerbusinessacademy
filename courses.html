@@ -306,110 +306,188 @@ header {
   </div>
 </main>
 
-        <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+    import {
+        getFirestore, collection, addDoc, query, where, getDocs,
+        doc, getDoc, serverTimestamp, deleteDoc
+    } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
-  authDomain: "students-login-29409.firebaseapp.com",
-  projectId: "students-login-29409",
-  storageBucket: "students-login-29409.firebasestorage.app",
-  messagingSenderId: "634331456872",
-  appId: "1:634331456872:web:6dae360c5e28d8356562dd",
-  measurementId: "G-96XXYG1VR2"
-};
+    /* 🔥 FIREBASE CONFIG */
+    const firebaseConfig = {
+        apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+        authDomain: "students-login-29409.firebaseapp.com",
+        projectId: "students-login-29409",
+        storageBucket: "students-login-29409.firebasestorage.app",
+        messagingSenderId: "634331456872",
+        appId: "1:634331456872:web:6dae360c5e28d8356562dd",
+        measurementId: "G-96XXYG1VR2"
+    };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
 
-const courses = [
-  { name: "Food Business Management Course", price: 49, overview: "Master the ecosystem of running a compliant food business.", curriculum: ["Business Models", "Compliance", "Digital Marketing"] },
-  { name: "Financial Management for Food Processors", price: 59, overview: "Learn unit costing, yield analysis, and profit maximization.", curriculum: ["Costing", "Pricing Strategy", "Cash Flow"] },
-  { name: "Food Value Addition Course for Farmers", price: 45, overview: "Turn raw produce into high-value branded products.", curriculum: ["Post-Harvest", "Packaging", "Branding"] },
-  { name: "New Product Development and Management", price: 69, overview: "Go from kitchen recipe to supermarket shelf-ready.", curriculum: ["Prototyping", "Sensory Eval", "Regulatory"] },
-  { name: "Management", price: 39, overview: "Leadership tactics for high-pressure food environments.", curriculum: ["Leadership", "Ethics", "Decision Making"] }
-];
+    /* 📚 COURSES DATA (New Structure + Old Keys) */
+    const courses = [
+        { name: "Food Business Management Course", price: 49, overview: "Master the ecosystem of running a compliant food business.", curriculum: ["Business Models", "Compliance", "Digital Marketing"] },
+        { name: "Financial Management for Food Processors", price: 59, overview: "Learn unit costing, yield analysis, and profit maximization.", curriculum: ["Costing", "Pricing Strategy", "Cash Flow"] },
+        { name: "Food Value Addition Course for Farmers", price: 45, overview: "Turn raw produce into high-value branded products.", curriculum: ["Post-Harvest", "Packaging", "Branding"] },
+        { name: "New Product Development and Management", price: 69, overview: "Go from kitchen recipe to supermarket shelf-ready.", curriculum: ["Prototyping", "Sensory Eval", "Regulatory"] },
+        { name: "Management", price: 39, overview: "Leadership tactics for high-pressure food environments.", curriculum: ["Leadership", "Ethics", "Decision Making"] }
+    ];
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    window.location.href = "login.html";
-    return;
-  }
+    const grid = document.getElementById("coursesGrid");
 
-  const email = user.email;
-  document.getElementById("studentEmail").textContent = email;
-  document.getElementById("avatarLetter").textContent = email.charAt(0).toUpperCase();
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            window.location.href = "login.html";
+            return;
+        }
 
-  // 1. Check Paid Courses (Firestore)
-  const studentSnap = await getDoc(doc(db, "students", user.uid));
-  const paidCourses = studentSnap.exists() ? (studentSnap.data().coursesPaid || []) : [];
+        // Update Header UI
+        document.getElementById("studentEmail").textContent = user.email;
+        document.getElementById("studentId").textContent = "ID: " + user.uid.substring(0, 8) + "...";
+        document.getElementById("avatarLetter").textContent = user.email.charAt(0).toUpperCase();
 
-  // 2. Check Pending Payments (Firestore)
-  const payQuery = query(collection(db, "payments"), where("studentId", "==", user.uid), where("status", "==", "pending"));
-  const paySnap = await getDocs(payQuery);
-  let pendingCourses = paySnap.docs.map(d => d.data().courseName);
+        // 1. Fetch user's paid courses from their profile (OLD LOGIC)
+        const studentSnap = await getDoc(doc(db, "students", user.uid));
+        const coursesPaid = studentSnap.exists() ? (studentSnap.data().coursesPaid || []) : [];
 
-  // 3. Check LocalStorage (The "Immediate" Status)
-  const localStatus = JSON.parse(localStorage.getItem("courseStatus")) || {};
-  const studentLocalData = localStatus[email] || {};
-  
-  // Combine Firestore pending and LocalStorage pending
-  Object.keys(studentLocalData).forEach(courseName => {
-    if (studentLocalData[courseName] === "pending" && !pendingCourses.includes(courseName)) {
-      pendingCourses.push(courseName);
-    }
-  });
+        // 2. Fetch all payment records for this student (OLD LOGIC)
+        // We do this so we can find the pending Invoice IDs
+        const paymentsSnap = await getDocs(
+            query(collection(db, "payments"), where("studentId", "==", user.uid))
+        );
 
-  renderCourses(paidCourses, pendingCourses);
-});
+        const paymentMap = {};
+        paymentsSnap.forEach(d => {
+            paymentMap[d.data().courseName] = { ...d.data(), id: d.id };
+        });
 
-function renderCourses(paid, pending) {
-  const grid = document.getElementById("coursesGrid");
-  grid.innerHTML = "";
+        // 3. Render Grid (NEW UI + OLD LOGIC)
+        grid.innerHTML = "";
 
-  courses.forEach(course => {
-    let statusBadge = "";
-    let actionBtn = `<button class="btn btn-enroll" onclick="enroll('${course.name}', ${course.price})">Enroll Now</button>`;
+        courses.forEach(course => {
+            const hasAccess = coursesPaid.includes(course.name);
+            const payment = paymentMap[course.name];
 
-    if (paid.includes(course.name)) {
-      statusBadge = `<div class="badge" style="background:#dcfce7; color:#15803d;">Active</div>`;
-      actionBtn = `<button class="btn btn-access" onclick="openCourse('${course.name}')">Enter Classroom</button>`;
-    } else if (pending.includes(course.name)) {
-      statusBadge = `<div class="badge">Pending Payment</div>`;
-      actionBtn = `<button class="btn" style="background:#e2e8f0; color:#64748b;" disabled>Waiting for Approval...</button>`;
-    }
+            let statusBadge = "";
+            let actionBtn = "";
 
-    grid.innerHTML += `
-      <div class="course-card">
-        <div class="card-accent"></div>
-        <div class="card-body">
-          ${statusBadge}
-          <h3 class="card-title">${course.name}</h3>
-          <span class="label">Overview</span>
-          <p class="overview">${course.overview}</p>
-          <span class="label">Includes</span>
-          <ul class="curriculum">${course.curriculum.map(c => `<li>${c}</li>`).join("")}</ul>
-        </div>
-        <div class="card-footer">
-          <div class="price-row">
-            <span style="color:var(--text-muted); font-size:0.9rem;">Course Fee</span>
-            <span class="price">$${course.price}</span>
-          </div>
-          ${actionBtn}
-        </div>
-      </div>
-    `;
-  });
-}
+            // Logic Tree from Old Code
+            if (hasAccess) {
+                // Course Paid
+                statusBadge = `<div class="badge approved">Active</div>`;
+                actionBtn = `<button class="btn btn-access" onclick="window.startCourse('${course.name}')">Enter Classroom</button>`;
+            } else if (payment && payment.status === "pending") {
+                // Pending Payment
+                statusBadge = `<div class="badge pending">Pending Payment</div>`;
+                actionBtn = `
+                    <button class="btn btn-pending" disabled>Waiting for Approval...</button>
+                    <a class="link-cancel" onclick="window.cancelInvoice('${payment.id}')">Cancel Invoice</a>
+                `;
+            } else {
+                // New Course
+                actionBtn = `<button class="btn btn-pay" onclick="window.createInvoice('${course.name}', ${course.price})">Enroll Now ($${course.price})</button>`;
+            }
 
-window.enroll = (name, price) => {
-  window.location.href = `student-details.html?name=${encodeURIComponent(name)}&price=${price}`;
-};
+            // New Card Design
+            grid.innerHTML += `
+            <div class="course-card">
+                <div class="card-top-accent"></div>
+                <div class="card-body">
+                    ${statusBadge}
+                    <h3 class="card-title">${course.name}</h3>
+                    <span class="label">Overview</span>
+                    <p class="overview-text">${course.overview}</p>
+                    <span class="label">Includes</span>
+                    <ul class="curriculum">${course.curriculum.map(c => `<li>${c}</li>`).join("")}</ul>
+                </div>
+                <div class="card-footer">
+                    <div class="price-area">
+                        <span class="price-label">Course Fee</span>
+                        <span class="price-val">$${course.price}</span>
+                    </div>
+                    ${actionBtn}
+                </div>
+            </div>
+            `;
+        });
+    });
 
-window.openCourse = (name) => {
-  alert("Opening " + name);
-};
-        </script>
+    /* 🧾 CREATE INVOICE (Logic from Old Code) */
+    window.createInvoice = async (courseName, price) => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const confirmed = confirm(`Generate invoice for:\n\n${courseName}\n$${price}\n\nProceed to payment details?`);
+        if (!confirmed) return;
+
+        // Check if pending already exists to avoid duplicates
+        const existingQ = query(
+            collection(db, "payments"),
+            where("studentId", "==", user.uid),
+            where("courseName", "==", courseName),
+            where("status", "==", "pending")
+        );
+        const existingSnap = await getDocs(existingQ);
+
+        if (!existingSnap.empty) {
+            window.location.href = `student-details.html?invoiceId=${existingSnap.docs[0].id}`;
+            return;
+        }
+
+        try {
+            const docRef = await addDoc(collection(db, "payments"), {
+                studentId: user.uid,
+                studentName: user.displayName || "Student",
+                email: user.email,
+                courseName,
+                price,
+                paymentMethod: "Manual",
+                invoiceNumber: `FBA-${Date.now()}`,
+                status: "pending",
+                createdAt: serverTimestamp()
+            });
+            // Redirect to invoice page
+            window.location.href = `student-details.html?invoiceId=${docRef.id}`;
+        } catch (error) {
+            console.error("Error creating invoice:", error);
+            alert("Failed to create invoice. Please try again.");
+        }
+    };
+
+    /* ❌ CANCEL INVOICE (Logic from Old Code) */
+    window.cancelInvoice = async (invoiceId) => {
+        if (!confirm("Are you sure you want to cancel this pending invoice?")) return;
+        try {
+            await deleteDoc(doc(db, "payments", invoiceId));
+            location.reload(); // Refresh to update UI
+        } catch (error) {
+            console.error("Error deleting invoice:", error);
+            alert("Error canceling invoice.");
+        }
+    };
+
+    /* ▶ ENTER CLASSROOM (Logic from Old Code) */
+    window.startCourse = (courseName) => {
+        const coursePages = {
+            "Management": "management_course.html",
+            "Food Business Management Course": "course-food-business-management.html",
+            "Financial Management for Food Processors": "course-financial-management.html",
+            "Food Value Addition Course for Farmers": "course-value-addition.html",
+            "New Product Development and Management": "course-product-development.html"
+        };
+        
+        const page = coursePages[courseName];
+        if (page) {
+            window.location.href = page;
+        } else {
+            alert("The classroom page for this course is currently being updated. Please contact support.");
+        }
+    };
+</script>
+</body>
+</html>
