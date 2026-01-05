@@ -5,9 +5,7 @@
 <title>Payment Preview - Food Business Academy</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- 1. FONTS & LIBRARIES -->
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
-<!-- Using html2pdf for better invoice generation -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
 <style>
@@ -209,7 +207,6 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 
 <body>
 
-<!-- 3. MAIN UI CONTAINER -->
 <div class="container">
     <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" alt="Logo" class="logo-img">
     
@@ -249,7 +246,6 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     <button type="button" class="main-btn" onclick="proceedPayment()">Generate Invoice & Pay</button>
 </div>
 
-<!-- 4. INVOICE MODAL -->
 <div id="invoice-modal-overlay">
   <div id="invoice-container">
     <div id="invoice-content">
@@ -330,12 +326,10 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
   </div>
 </div>
 
-<!-- 5. FIREBASE SCRIPTS -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-<!-- 6. LOGIC -->
 <script>
 // --- A. CONFIGURATION ---
 const firebaseConfig = {
@@ -354,26 +348,30 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-// --- B. GET DATA (Fixing "Unknown" issues) ---
+// --- B. GET DATA FROM URL ---
 const urlParams = new URLSearchParams(window.location.search);
 let courseName = urlParams.get('name');
 let coursePrice = urlParams.get('price');
+let existingInvoiceId = urlParams.get('invoiceId'); // Grab the ID from courses page
 
-// Backup: Load from LocalStorage if not in URL
-if (!courseName) courseName = localStorage.getItem("courseName") || "Unknown Course";
-if (!coursePrice) coursePrice = localStorage.getItem("coursePrice") || "0.00";
-
-// SAVE immediately so it persists on reload
-if(courseName) localStorage.setItem("courseName", courseName);
-if(coursePrice) localStorage.setItem("coursePrice", coursePrice);
-
-// Update UI
-if(document.getElementById("displayCourse")) {
+// Display Logic
+if (courseName && coursePrice) {
+    // If URL has data, display it and save to local storage as backup
+    document.getElementById("displayCourse").textContent = courseName;
+    document.getElementById("displayPrice").textContent = "$" + coursePrice;
+    
+    localStorage.setItem("courseName", courseName);
+    localStorage.setItem("coursePrice", coursePrice);
+} else {
+    // Fallback: Try LocalStorage
+    courseName = localStorage.getItem("courseName") || "Unknown Course";
+    coursePrice = localStorage.getItem("coursePrice") || "0.00";
+    
     document.getElementById("displayCourse").textContent = courseName;
     document.getElementById("displayPrice").textContent = "$" + coursePrice;
 }
 
-// Global Variables
+// Global User Vars
 let studentEmail = "";
 let studentId = "";
 let studentName = "";
@@ -387,8 +385,9 @@ firebase.auth().onAuthStateChanged((user) => {
         
         document.getElementById("displayEmail").textContent = studentEmail;
     } else {
-        // Not logged in -> Login
-        window.location.href = "index.html";
+        // Not logged in -> Redirect to Login
+        // Note: Change 'index.html' to your actual login page if different
+        window.location.href = "index.html"; 
     }
 });
 
@@ -402,36 +401,53 @@ function selectPayment(methodValue, cardElement) {
 
 function proceedPayment(){
     const method = document.getElementById("method").value;
-    const invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
     const dateStr = new Date().toLocaleDateString();
-
+    
+    // Use existing Invoice Number if available, otherwise generate new
+    let invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
+    
+    // UPDATE LOGIC:
+    // If we came from the courses page, we already have a DB document. 
+    // We should update THAT document instead of making a new one.
+    
     if(studentEmail && courseName) {
-        // 1. SAVE TO FIRESTORE (payments) - Your Specific Fields
-        const paymentData = {
-            courseName: courseName,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            email: studentEmail,
-            invoiceNumber: invNumber,
-            paymentMethod: method,
-            price: coursePrice,
-            status: "pending", 
-            studentId: studentId,
-            studentName: studentName
-        };
+        if(existingInvoiceId) {
+             // UPDATE Existing Invoice in Firestore
+             db.collection("payments").doc(existingInvoiceId).update({
+                paymentMethod: method,
+                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+             }).then(() => {
+                 console.log("Invoice Updated");
+                 // Fetch the specific invoice number from the doc if needed, 
+                 // but for UI speed we can just display the ID or a placeholder
+             });
+             // For display purposes, use the ID or a short version
+             invNumber = existingInvoiceId; 
+        } else {
+            // CREATE New Invoice (Fallback if accessed directly)
+            const paymentData = {
+                courseName: courseName,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                email: studentEmail,
+                invoiceNumber: invNumber,
+                paymentMethod: method,
+                price: coursePrice,
+                status: "pending", 
+                studentId: studentId,
+                studentName: studentName
+            };
+            db.collection("payments").doc(invNumber).set(paymentData);
+        }
 
-        db.collection("payments").doc(invNumber).set(paymentData)
-        .then(() => console.log("Payment recorded to Firestore."))
-        .catch((error) => console.error("Error:", error));
-
-        // 2. SAVE TO LOCAL STORAGE (Your Original Logic for courses.html)
+        // SAVE TO LOCAL STORAGE (Legacy support)
         const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
         if(!statusData[studentEmail]) statusData[studentEmail] = {};
         statusData[studentEmail][courseName] = "pending";
         localStorage.setItem("courseStatus", JSON.stringify(statusData));
     }
 
-    // 3. SHOW INVOICE
-    document.getElementById("inv-num").textContent = invNumber;
+    // --- POPULATE INVOICE MODAL ---
+    document.getElementById("inv-num").textContent = invNumber.substring(0, 10); // Shorten if it's a long ID
     document.getElementById("inv-date").textContent = dateStr;
     document.getElementById("inv-method").textContent = method;
     document.getElementById("inv-student-name").textContent = studentName;
@@ -440,12 +456,12 @@ function proceedPayment(){
     document.getElementById("inv-course-price").textContent = "$" + coursePrice;
     document.getElementById("inv-final-total").textContent = "$" + coursePrice;
 
+    // Show Modal
     document.getElementById("invoice-modal-overlay").style.display = "flex";
 }
 
 // --- E. FINISH & DOWNLOAD ---
 function finishAndRedirect() {
-    // Go back to courses page
     window.location.href = "courses.html";
 }
 
@@ -463,4 +479,4 @@ function downloadPDF(){
 }
 </script>
 </body>
-              </html>
+</html>
