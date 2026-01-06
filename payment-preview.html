@@ -286,10 +286,6 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
           </div>
         </div>
 
-        <div style="margin-bottom:20px;">
-            <strong>Bill To:</strong> <span id="inv-student-name">...</span>
-        </div>
-
         <table class="inv-table">
           <thead>
             <tr>
@@ -458,7 +454,7 @@ async function proceedPayment(){
     document.getElementById("inv-num").textContent = invNumber.substring(0, 12) + "..."; // Shorten for display
     document.getElementById("inv-date").textContent = dateStr;
     document.getElementById("inv-method").textContent = method;
-    document.getElementById("inv-student-name").textContent = studentName;
+    // REMOVED: document.getElementById("inv-student-name").textContent = studentName;
     document.getElementById("inv-course-name").textContent = courseName;
     document.getElementById("inv-course-price").textContent = "$" + coursePrice;
     document.getElementById("inv-final-total").textContent = "$" + coursePrice;
