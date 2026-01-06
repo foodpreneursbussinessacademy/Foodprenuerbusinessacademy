@@ -225,7 +225,8 @@ body {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
 }
-.btn-invoice {
+/* CHANGED: Renamed btn-invoice to btn-ticket for clarity */
+.btn-ticket {
     background: #e0e7ff;
     color: var(--primary);
 }
@@ -233,7 +234,7 @@ body {
     background: #fee2e2;
     color: var(--danger);
 }
-.btn-invoice:hover, .btn-cancel:hover { filter: brightness(0.95); }
+.btn-ticket:hover, .btn-cancel:hover { filter: brightness(0.95); }
 
 /* Loading */
 .loader { grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-light); }
@@ -388,10 +389,11 @@ function renderCourses(paidList, pendingList) {
       // Pass the docId (if it exists) to the cancel function
       const docIdParam = isPendingObj.docId ? `'${isPendingObj.docId}'` : 'null';
       
+      // CHANGED: Replaced Invoice button with Open Ticket button
       actionArea = `
         <div class="pending-actions">
-            <button class="btn btn-invoice" onclick="viewInvoice('${course.name}', ${course.price})">
-                <i class="fas fa-file-invoice"></i> View Invoice
+            <button class="btn btn-ticket" onclick="openTicket()">
+                <i class="fas fa-ticket-alt"></i> Open Ticket
             </button>
             <button class="btn btn-cancel" onclick="cancelOrder('${course.name}', ${docIdParam})">
                 <i class="fas fa-trash"></i> Cancel
@@ -449,10 +451,9 @@ window.openCourse = (courseName) => {
   }
 };
 
-window.openTicket = (name, price) => {
-    // Redirect to an invoice view page (Assuming you have one or using student-details as invoice view)
-    // You can also create a dedicated 'invoice.html'
-    window.location.href = `tickets.html'?name=${encodeURIComponent(name)}&price=${price}`;
+// CHANGED: Replaced viewInvoice with openTicket
+window.openTicket = () => {
+    window.location.href = "https://foodpreneursbussinessacademy.github.io/Foodprenuerbusinessacademy/tickets.html";
 };
 
 window.cancelOrder = async (courseName, docId) => {
