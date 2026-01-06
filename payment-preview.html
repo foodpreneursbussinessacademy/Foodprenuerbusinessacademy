@@ -121,6 +121,11 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     font-weight: 600;
     cursor: pointer;
     box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+    transition: opacity 0.3s;
+}
+.main-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* --- INVOICE MODAL --- */
@@ -331,7 +336,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-    <script>
+<script>
 // --- A. CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
@@ -380,7 +385,7 @@ firebase.auth().onAuthStateChanged((user) => {
         studentName = user.displayName || localStorage.getItem("studentName") || "Student";
         document.getElementById("displayEmail").textContent = studentEmail;
     } else {
-        // Uncomment below to enforce login
+        // Uncomment below to enforce login if needed
         // window.location.href = "index.html"; 
     }
 });
@@ -393,60 +398,111 @@ function selectPayment(methodValue, cardElement) {
     cardElement.classList.add('active');
 }
 
-function proceedPayment(){
-    const method = document.getElementById("method").value;
-    const dateStr = new Date().toLocaleDateString();
-    let invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
-    
-    // 1. Update Local Storage for courses.html status
-    if(studentEmail && courseName) {
-        const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
-        if(!statusData[studentEmail]) statusData[studentEmail] = {};
-        statusData[studentEmail][courseName] = "pending"; 
-        localStorage.setItem("courseStatus", JSON.stringify(statusData));
+// --- UPDATED INTELLIGENT PAYMENT FUNCTION ---
+async function proceedPayment() {
+    // 1. Validation: Ensure user is logged in
+    if (!studentId) {
+        alert("Please log in to proceed.");
+        return;
     }
 
-    // 2. Populate Invoice Modal UI
-    if(existingInvoiceId) invNumber = existingInvoiceId;
+    const method = document.getElementById("method").value;
+    const dateStr = new Date().toLocaleDateString();
     
-    document.getElementById("inv-num").textContent = invNumber; // Removed substring to keep full ID
-    document.getElementById("inv-date").textContent = dateStr;
-    document.getElementById("inv-method").textContent = method;
-    document.getElementById("inv-student-name").textContent = studentName;
-    document.getElementById("inv-course-name").textContent = courseName;
-    document.getElementById("inv-course-price").textContent = "$" + coursePrice;
-    document.getElementById("inv-final-total").textContent = "$" + coursePrice;
+    // Disable button to prevent double-clicks
+    const btn = document.querySelector(".main-btn");
+    btn.disabled = true;
+    btn.textContent = "Checking records...";
 
-    // 3. Show Modal
-    document.getElementById("invoice-modal-overlay").style.display = "flex";
+    try {
+        // 2. INTELLIGENCE CHECK: Query Firestore for existing records
+        const querySnapshot = await db.collection("payments")
+            .where("studentId", "==", studentId)
+            .where("courseName", "==", courseName)
+            .limit(1) // We only need to know if ONE exists
+            .get();
 
-    // --- NEW: AUTO SAVE INVOICE ---
-    // We wait 800ms to ensure the modal is fully visible before taking the snapshot
-    setTimeout(() => {
-        downloadPDF();
-    }, 800);
+        let invNumber;
+        let isDuplicate = false;
+        let existingStatus = "pending";
 
-    // 4. Update Firestore
-    if(studentEmail && courseName) {
-        if(existingInvoiceId) {
-             db.collection("payments").doc(existingInvoiceId).update({
+        if (!querySnapshot.empty) {
+            // A record exists! Reuse the existing Invoice Number
+            const doc = querySnapshot.docs[0];
+            const data = doc.data();
+            
+            invNumber = doc.id; 
+            existingStatus = data.status;
+            isDuplicate = true;
+
+            // Check if already paid
+            if (existingStatus === 'paid') {
+                alert("You have already successfully paid for this course!");
+                window.location.href = "courses.html";
+                return;
+            } else {
+                console.log("Pending invoice found. Updating existing record.");
+            }
+        } else {
+            // No record found. Generate a NEW Invoice Number
+            // If URL has invoiceID (from previous navigation), use it, else generate new
+            if(existingInvoiceId){
+                invNumber = existingInvoiceId;
+            } else {
+                invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
+            }
+        }
+
+        // 3. Update UI with the determined Invoice Number
+        document.getElementById("inv-num").textContent = invNumber;
+        document.getElementById("inv-date").textContent = dateStr;
+        document.getElementById("inv-method").textContent = method;
+        document.getElementById("inv-student-name").textContent = studentName;
+        document.getElementById("inv-course-name").textContent = courseName;
+        document.getElementById("inv-course-price").textContent = "$" + coursePrice;
+        document.getElementById("inv-final-total").textContent = "$" + coursePrice;
+
+        // 4. Update or Create in Firestore
+        if (isDuplicate) {
+            // UPDATE existing pending invoice with new method/time
+            await db.collection("payments").doc(invNumber).update({
                 paymentMethod: method,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-             });
+            });
         } else {
-            const paymentData = {
+            // CREATE new record
+            await db.collection("payments").doc(invNumber).set({
                 courseName: courseName,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 email: studentEmail,
                 invoiceNumber: invNumber,
                 paymentMethod: method,
                 price: coursePrice,
-                status: "pending", 
+                status: "pending",
                 studentId: studentId,
                 studentName: studentName
-            };
-            db.collection("payments").doc(invNumber).set(paymentData);
+            });
+            
+            // Update LocalStorage status
+            const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
+            if(!statusData[studentEmail]) statusData[studentEmail] = {};
+            statusData[studentEmail][courseName] = "pending"; 
+            localStorage.setItem("courseStatus", JSON.stringify(statusData));
         }
+
+        // 5. Show Modal and Auto-download
+        document.getElementById("invoice-modal-overlay").style.display = "flex";
+        setTimeout(() => {
+            downloadPDF();
+        }, 800);
+
+    } catch (error) {
+        console.error("Error processing payment:", error);
+        alert("An error occurred. Please try again.");
+    } finally {
+        // Re-enable button
+        btn.disabled = false;
+        btn.textContent = "Generate Invoice & Pay";
     }
 }
 
@@ -456,19 +512,19 @@ function finishAndRedirect() {
 }
 
 function downloadPDF(){
-    // Select the specific invoice area
     const element = document.getElementById('invoice-content');
     const invNum = document.getElementById("inv-num").textContent;
     
     const opt = {
         margin: 0,
-        filename: `Invoice_${invNum}.pdf`, // Custom filename
+        filename: `Invoice_${invNum}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true }, // Higher scale for clarity
+        html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
     
-    // Generate and Save
     html2pdf().set(opt).from(element).save();
 }
-                </script>
+</script>
+</body>
+</html>
