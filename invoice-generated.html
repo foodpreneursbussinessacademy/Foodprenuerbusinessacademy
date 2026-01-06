@@ -111,7 +111,7 @@
             font-size: 1rem;
             font-weight: 600;
             color: var(--text-dark);
-            word-break: break-all; /* Ensures long emails don't break layout */
+            word-break: break-all; 
         }
         .invoice-number-display {
             color: var(--primary);
@@ -273,7 +273,6 @@
 
             // 3. FETCH DATA FROM FIRESTORE
             try {
-                // Querying by Email and CourseName (as per your data structure)
                 const q = query(
                     collection(db, "payments"), 
                     where("email", "==", user.email),
@@ -283,30 +282,29 @@
                 const querySnapshot = await getDocs(q);
                 
                 if (!querySnapshot.empty) {
-                    // We might get multiple attempts. Let's find the most recent one manually
-                    // to avoid needing a Composite Index right now.
                     let latestDoc = null;
+                    let latestId = null;
                     let latestTime = 0;
 
                     querySnapshot.forEach((doc) => {
                         const d = doc.data();
-                        // Convert Firestore timestamp to milliseconds
                         const time = d.createdAt && d.createdAt.seconds ? d.createdAt.seconds : 0;
+                        
                         if(time >= latestTime) {
                             latestTime = time;
                             latestDoc = d;
+                            latestId = doc.id; // Capture Document ID
                         }
                     });
 
                     if (latestDoc) {
-                        // --- HERE IS THE FIX ---
-                        // We strictly use the 'invoiceNumber' field from the data
-                        if (latestDoc.invoiceNumber) {
-                            document.getElementById('inv-number').textContent = latestDoc.invoiceNumber;
-                        } else {
-                            // Fallback only if the field is missing
-                            document.getElementById('inv-number').textContent = "PENDING";
-                        }
+                        // --- ROBUST INVOICE DISPLAY LOGIC ---
+                        // 1. Check for 'invoiceNumber' (camelCase)
+                        // 2. Check for 'InvoiceNumber' (Capitalized - just in case)
+                        // 3. Fallback to Document ID
+                        const finalRef = latestDoc.invoiceNumber || latestDoc.InvoiceNumber || latestId;
+
+                        document.getElementById('inv-number').textContent = finalRef || "PENDING";
 
                         // Fill other details
                         if(latestDoc.paymentMethod) document.getElementById('payment-method').textContent = latestDoc.paymentMethod;
@@ -317,15 +315,18 @@
 
                         // Format Date
                         if(latestDoc.createdAt && latestDoc.createdAt.toDate) {
-                            document.getElementById('inv-date').textContent = latestDoc.createdAt.toDate().toLocaleDateString();
+                            const dateObj = latestDoc.createdAt.toDate();
+                            document.getElementById('inv-date').textContent = dateObj.toLocaleDateString('en-GB', {
+                                day: 'numeric', month: 'short', year: 'numeric'
+                            });
                         }
                     }
                 } else {
-                    document.getElementById('inv-number').textContent = "NOT FOUND";
+                    document.getElementById('inv-number').textContent = "Not Found";
                 }
             } catch (error) {
                 console.error("Error:", error);
-                document.getElementById('inv-number').textContent = "ERROR";
+                document.getElementById('inv-number').textContent = "Error";
             }
         });
 
