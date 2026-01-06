@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Invoice</title>
+    <title>Invoice View</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -111,7 +111,7 @@
             font-size: 1rem;
             font-weight: 600;
             color: var(--text-dark);
-            word-break: break-all; 
+            word-break: break-all;
         }
         .invoice-number-display {
             color: var(--primary);
@@ -146,14 +146,10 @@
         @media (max-width: 600px) {
             body { padding: 10px; }
             .invoice-card { padding: 25px 20px; }
-            
             .header { flex-direction: column; gap: 20px; }
             .title-block { text-align: left; }
-            
             .details-grid { grid-template-columns: 1fr; gap: 20px; }
-            
             .watermark { font-size: 3rem; border-width: 2px; }
-            
             .actions-row { flex-direction: column; }
             .btn { width: 100%; justify-content: center; }
         }
@@ -190,7 +186,7 @@
             <div class="detail-group">
                 <span class="label">Invoice Details</span>
                 <div class="value">
-                    Ref: <span id="inv-number" class="invoice-number-display">Loading...</span>
+                    Ref: <span id="inv-number" class="invoice-number-display">...</span>
                 </div>
                 <div style="margin-top: 5px; font-size: 0.85rem;">Method: <span id="payment-method">...</span></div>
             </div>
@@ -234,7 +230,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
@@ -252,6 +248,8 @@
 
         // 1. Get URL Params
         const urlParams = new URLSearchParams(window.location.search);
+        // Look for 'invoiceId' first (if passed), or 'id', or just 'name'
+        const invoiceIdParam = urlParams.get('invoiceId') || urlParams.get('id');
         const courseNameParam = decodeURIComponent(urlParams.get('name') || '');
         const priceParam = urlParams.get('price');
 
@@ -271,62 +269,76 @@
             document.getElementById('student-email').textContent = user.email;
             document.getElementById('student-name').textContent = user.displayName || "Student";
 
-            // 3. FETCH DATA FROM FIRESTORE
             try {
-                const q = query(
-                    collection(db, "payments"), 
-                    where("email", "==", user.email),
-                    where("courseName", "==", courseNameParam)
-                );
+                let invoiceData = null;
+                let invoiceId = null;
 
-                const querySnapshot = await getDocs(q);
+                // STRATEGY A: If we have the ID in the URL, get that exact document
+                if (invoiceIdParam) {
+                    const docRef = doc(db, "payments", invoiceIdParam);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        invoiceData = docSnap.data();
+                        invoiceId = docSnap.id;
+                    }
+                } 
                 
-                if (!querySnapshot.empty) {
-                    let latestDoc = null;
-                    let latestId = null;
-                    let latestTime = 0;
+                // STRATEGY B: If no ID in URL, find the LATEST invoice for this user & course
+                if (!invoiceData) {
+                    const q = query(
+                        collection(db, "payments"), 
+                        where("email", "==", user.email),
+                        where("courseName", "==", courseNameParam)
+                    );
+                    const querySnapshot = await getDocs(q);
+                    
+                    if (!querySnapshot.empty) {
+                        // Loop through to find the most recent one
+                        let latestTime = 0;
+                        querySnapshot.forEach((doc) => {
+                            const d = doc.data();
+                            // Handle Timestamp
+                            const time = d.createdAt && d.createdAt.seconds ? d.createdAt.seconds : 0;
+                            if(time >= latestTime) {
+                                latestTime = time;
+                                invoiceData = d;
+                                invoiceId = doc.id; // <--- CRITICAL: Get ID from the document key
+                            }
+                        });
+                    }
+                }
 
-                    querySnapshot.forEach((doc) => {
-                        const d = doc.data();
-                        const time = d.createdAt && d.createdAt.seconds ? d.createdAt.seconds : 0;
-                        
-                        if(time >= latestTime) {
-                            latestTime = time;
-                            latestDoc = d;
-                            latestId = doc.id; // Capture Document ID
-                        }
-                    });
+                // --- DISPLAY DATA ---
+                if (invoiceData && invoiceId) {
+                    // 1. SET INVOICE NUMBER (Use the ID "FBA-XXXX")
+                    document.getElementById('inv-number').textContent = invoiceId;
 
-                    if (latestDoc) {
-                        // --- ROBUST INVOICE DISPLAY LOGIC ---
-                        // 1. Check for 'invoiceNumber' (camelCase)
-                        // 2. Check for 'InvoiceNumber' (Capitalized - just in case)
-                        // 3. Fallback to Document ID
-                        const finalRef = latestDoc.invoiceNumber || latestDoc.InvoiceNumber || latestId;
+                    // 2. Set Course & Price (from DB data to be accurate)
+                    if(invoiceData.courseName) document.getElementById('course-name').textContent = invoiceData.courseName;
+                    if(invoiceData.price) {
+                        document.getElementById('course-price').textContent = "$" + invoiceData.price;
+                        document.getElementById('total-price').textContent = "$" + invoiceData.price;
+                    }
 
-                        document.getElementById('inv-number').textContent = finalRef || "PENDING";
+                    // 3. Payment Method
+                    if(invoiceData.paymentMethod) document.getElementById('payment-method').textContent = invoiceData.paymentMethod;
 
-                        // Fill other details
-                        if(latestDoc.paymentMethod) document.getElementById('payment-method').textContent = latestDoc.paymentMethod;
-                        if(latestDoc.price) {
-                            document.getElementById('course-price').textContent = "$" + latestDoc.price;
-                            document.getElementById('total-price').textContent = "$" + latestDoc.price;
-                        }
-
-                        // Format Date
-                        if(latestDoc.createdAt && latestDoc.createdAt.toDate) {
-                            const dateObj = latestDoc.createdAt.toDate();
-                            document.getElementById('inv-date').textContent = dateObj.toLocaleDateString('en-GB', {
-                                day: 'numeric', month: 'short', year: 'numeric'
-                            });
-                        }
+                    // 4. Date
+                    if(invoiceData.createdAt && invoiceData.createdAt.toDate) {
+                        document.getElementById('inv-date').textContent = invoiceData.createdAt.toDate().toLocaleDateString('en-GB', {
+                            day: 'numeric', month: 'short', year: 'numeric'
+                        });
+                    } else {
+                        // Fallback to today if date is missing
+                         document.getElementById('inv-date').textContent = new Date().toLocaleDateString();
                     }
                 } else {
-                    document.getElementById('inv-number').textContent = "Not Found";
+                    document.getElementById('inv-number').textContent = "PENDING";
                 }
+
             } catch (error) {
-                console.error("Error:", error);
-                document.getElementById('inv-number').textContent = "Error";
+                console.error("Error loading invoice:", error);
+                document.getElementById('inv-number').textContent = "ERROR";
             }
         });
 
