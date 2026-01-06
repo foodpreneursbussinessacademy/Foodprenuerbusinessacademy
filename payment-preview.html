@@ -331,7 +331,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-<script>
+    <script>
 // --- A. CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
@@ -380,7 +380,8 @@ firebase.auth().onAuthStateChanged((user) => {
         studentName = user.displayName || localStorage.getItem("studentName") || "Student";
         document.getElementById("displayEmail").textContent = studentEmail;
     } else {
-        window.location.href = "index.html"; 
+        // Uncomment below to enforce login
+        // window.location.href = "index.html"; 
     }
 });
 
@@ -397,20 +398,18 @@ function proceedPayment(){
     const dateStr = new Date().toLocaleDateString();
     let invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
     
-    // 1. IMPORTANT: Update Local Storage IMMEDIATELY (For courses.html)
-    // This runs the exact logic from your Old Code first to ensure redirection works visually
+    // 1. Update Local Storage for courses.html status
     if(studentEmail && courseName) {
         const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
         if(!statusData[studentEmail]) statusData[studentEmail] = {};
-        
-        statusData[studentEmail][courseName] = "pending"; // Mark as pending
+        statusData[studentEmail][courseName] = "pending"; 
         localStorage.setItem("courseStatus", JSON.stringify(statusData));
     }
 
     // 2. Populate Invoice Modal UI
-    if(existingInvoiceId) invNumber = existingInvoiceId; // Use ID if exists
+    if(existingInvoiceId) invNumber = existingInvoiceId;
     
-    document.getElementById("inv-num").textContent = invNumber.substring(0, 15);
+    document.getElementById("inv-num").textContent = invNumber; // Removed substring to keep full ID
     document.getElementById("inv-date").textContent = dateStr;
     document.getElementById("inv-method").textContent = method;
     document.getElementById("inv-student-name").textContent = studentName;
@@ -421,7 +420,13 @@ function proceedPayment(){
     // 3. Show Modal
     document.getElementById("invoice-modal-overlay").style.display = "flex";
 
-    // 4. Update Firestore in the background
+    // --- NEW: AUTO SAVE INVOICE ---
+    // We wait 800ms to ensure the modal is fully visible before taking the snapshot
+    setTimeout(() => {
+        downloadPDF();
+    }, 800);
+
+    // 4. Update Firestore
     if(studentEmail && courseName) {
         if(existingInvoiceId) {
              db.collection("payments").doc(existingInvoiceId).update({
@@ -447,30 +452,23 @@ function proceedPayment(){
 
 // --- E. FINISH & REDIRECT ---
 function finishAndRedirect() {
-    // Double check local storage just in case
-    if(studentEmail && courseName) {
-        const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
-        if(!statusData[studentEmail]) statusData[studentEmail] = {};
-        statusData[studentEmail][courseName] = "pending";
-        localStorage.setItem("courseStatus", JSON.stringify(statusData));
-    }
-    
-    // Redirect to courses page
     window.location.href = "courses.html";
 }
 
 function downloadPDF(){
+    // Select the specific invoice area
     const element = document.getElementById('invoice-content');
     const invNum = document.getElementById("inv-num").textContent;
+    
     const opt = {
-        margin: 0.5,
-        filename: `Invoice-${invNum}.pdf`,
+        margin: 0,
+        filename: `Invoice_${invNum}.pdf`, // Custom filename
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, useCORS: true }, // Higher scale for clarity
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
+    
+    // Generate and Save
     html2pdf().set(opt).from(element).save();
 }
 </script>
-</body>
-</html>
