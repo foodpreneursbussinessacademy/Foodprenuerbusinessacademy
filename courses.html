@@ -449,10 +449,10 @@ window.openCourse = (courseName) => {
   }
 };
 
-window.viewInvoice = (name, price) => {
+window.openTicket = (name, price) => {
     // Redirect to an invoice view page (Assuming you have one or using student-details as invoice view)
     // You can also create a dedicated 'invoice.html'
-    window.location.href = `invoice-generated.html?name=${encodeURIComponent(name)}&price=${price}`;
+    window.location.href = `tickets.html'?name=${encodeURIComponent(name)}&price=${price}`;
 };
 
 window.cancelOrder = async (courseName, docId) => {
