@@ -2,296 +2,239 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice - Food Business Academy</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Invoice</title>
+    
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
+
     <style>
         :root {
             --primary: #4338ca;
-            --accent: #6366f1;
-            --text-main: #1e293b;
-            --text-light: #64748b;
-            --bg-gradient: radial-gradient(circle at 10% 20%, rgb(239, 246, 255) 0%, rgb(219, 228, 255) 90%);
+            --text-dark: #1f2937;
+            --text-light: #6b7280;
+            --bg-color: #f3f4f6;
         }
 
         * { box-sizing: border-box; font-family: 'Outfit', sans-serif; }
 
         body {
             margin: 0;
-            background: var(--bg-gradient);
-            color: var(--text-main);
+            padding: 20px 15px;
+            background: var(--bg-color);
+            color: var(--text-dark);
             min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 40px 20px;
         }
 
-        /* --- ACTION BAR --- */
-        .action-bar {
-            max-width: 800px;
-            width: 100%;
+        /* --- BUTTONS --- */
+        .actions-row {
+            max-width: 700px;
+            margin: 0 auto 20px auto;
             display: flex;
             justify-content: space-between;
-            margin-bottom: 20px;
-            gap: 15px;
+            gap: 10px;
         }
 
-        .btn-back, .btn-download {
-            text-decoration: none;
+        .btn {
+            padding: 12px 20px;
+            border-radius: 8px;
             font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 8px;
-            padding: 12px 20px;
-            border-radius: 12px;
-            transition: 0.3s;
-            font-size: 0.95rem;
+            text-decoration: none;
         }
+        .btn-back { background: #e5e7eb; color: #374151; }
+        .btn-download { background: var(--primary); color: white; }
 
-        .btn-back {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.6);
-            backdrop-filter: blur(10px);
-        }
-        .btn-back:hover { background: white; transform: translateX(-3px); }
-
-        .btn-download {
-            background: var(--primary);
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .btn-download:hover { background: #3730a3; transform: translateY(-2px); }
-
-        /* --- INVOICE CONTAINER --- */
-        #invoice-card {
+        /* --- INVOICE CARD --- */
+        .invoice-card {
             background: white;
-            width: 100%;
-            max-width: 800px;
-            padding: 50px;
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             position: relative;
             overflow: hidden;
         }
 
-        /* Watermark */
         .watermark {
             position: absolute;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%) rotate(-30deg);
-            font-size: 8rem;
+            font-size: 5rem;
+            color: rgba(200, 0, 0, 0.08);
+            border: 4px solid rgba(200, 0, 0, 0.08);
+            padding: 10px 40px;
             font-weight: 900;
-            color: rgba(0, 0, 0, 0.03);
             pointer-events: none;
-            text-transform: uppercase;
             white-space: nowrap;
-            z-index: 0;
         }
 
-        .content-layer { position: relative; z-index: 1; }
-
-        /* Header Section */
-        .inv-header {
+        /* Header */
+        .header {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #f1f5f9;
-            padding-bottom: 30px;
+            border-bottom: 2px solid #f3f4f6;
+            padding-bottom: 20px;
             margin-bottom: 30px;
         }
+        .brand h2 { margin: 0; color: var(--primary); font-size: 1.5rem; }
+        .brand p { margin: 2px 0; font-size: 0.85rem; color: var(--text-light); }
+        
+        .title-block { text-align: right; }
+        .title-block h1 { margin: 0; font-size: 2rem; color: #d1d5db; letter-spacing: 2px; }
+        .date-label { font-size: 0.9rem; font-weight: 600; margin-top: 5px; }
 
-        .logo-section h2 { margin: 0; color: var(--primary); font-weight: 800; font-size: 1.5rem; }
-        .logo-section p { margin: 4px 0; color: var(--text-light); font-size: 0.85rem; }
-
-        .title-section { text-align: right; }
-        .title-section h1 { margin: 0; font-size: 2.2rem; letter-spacing: 2px; color: #cbd5e1; line-height: 1; }
-        .date-badge { 
-            display: inline-block; 
-            margin-top: 10px; 
-            background: #f1f5f9; 
-            padding: 5px 10px; 
-            border-radius: 6px; 
-            font-size: 0.85rem; 
-            font-weight: 600;
-        }
-
-        /* Billing Grid */
-        .billing-grid {
+        /* Grid for details */
+        .details-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            gap: 30px;
             margin-bottom: 40px;
         }
-
-        .bill-label {
+        
+        .detail-group .label {
+            font-size: 0.75rem;
             text-transform: uppercase;
-            font-size: 0.7rem;
-            font-weight: 700;
             color: var(--text-light);
-            margin-bottom: 8px;
+            font-weight: 700;
+            margin-bottom: 5px;
             display: block;
-            letter-spacing: 0.5px;
         }
-
-        .bill-value { font-weight: 600; color: var(--text-main); font-size: 1.05rem; word-break: break-all; }
-
-        /* Table */
-        .table-container { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; min-width: 400px; }
-        th { text-align: left; background: #f8fafc; padding: 12px; color: var(--text-light); font-size: 0.8rem; text-transform: uppercase; }
-        td { padding: 15px 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.95rem; }
-
-        .total-row td { border-bottom: none; padding-top: 20px; font-size: 1.1rem; font-weight: 700; }
-        .total-box {
-            background: var(--primary);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
+        .detail-group .value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            word-break: break-all; /* Ensures long emails don't break layout */
+        }
+        .invoice-number-display {
+            color: var(--primary);
+            font-size: 1.1rem;
+            font-family: monospace;
+            background: #e0e7ff;
+            padding: 5px 10px;
+            border-radius: 6px;
             display: inline-block;
         }
 
-        /* Instructions */
+        /* Table */
+        .table-responsive { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        th { text-align: left; background: #f9fafb; padding: 12px; font-size: 0.8rem; text-transform: uppercase; color: var(--text-light); }
+        td { padding: 15px 12px; border-bottom: 1px solid #f3f4f6; font-size: 0.95rem; }
+        
+        .total-row td { border-top: 2px solid #374151; font-weight: 800; font-size: 1.1rem; padding-top: 15px; }
+
+        /* Footer */
         .instructions {
             background: #fdf2f8;
-            border-left: 4px solid #ec4899;
-            padding: 20px;
-            border-radius: 8px;
+            border-left: 4px solid #db2777;
+            padding: 15px;
             font-size: 0.9rem;
+            border-radius: 4px;
         }
-        .instructions h4 { margin: 0 0 8px 0; color: #9d174d; font-size: 1rem; }
-        .instructions p { margin: 4px 0; color: #be185d; }
+        .instructions strong { color: #be185d; display: block; margin-bottom: 5px; }
+        .instructions p { margin: 3px 0; color: #9d174d; }
 
-        .footer {
-            margin-top: 40px; 
-            text-align: center; 
-            color: var(--text-light); 
-            font-size: 0.8rem; 
-            border-top: 1px solid #f1f5f9; 
-            padding-top: 20px;
-        }
-
-        /* --- MOBILE RESPONSIVE TWEAKS --- */
-        @media (max-width: 640px) {
-            body { padding: 20px 10px; }
-            .action-bar { flex-direction: column; }
+        /* --- MOBILE TWEAKS --- */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .invoice-card { padding: 25px 20px; }
             
-            #invoice-card { padding: 30px 20px; border-radius: 16px; }
+            .header { flex-direction: column; gap: 20px; }
+            .title-block { text-align: left; }
             
-            .inv-header { flex-direction: column; gap: 20px; align-items: flex-start; }
-            .title-section { text-align: left; }
+            .details-grid { grid-template-columns: 1fr; gap: 20px; }
             
-            .billing-grid { grid-template-columns: 1fr; gap: 25px; }
-            .billing-grid > div:last-child { text-align: left !important; } /* Align Invoice # left on mobile */
+            .watermark { font-size: 3rem; border-width: 2px; }
             
-            .watermark { font-size: 4rem; }
-            
-            .logo-section h2 { font-size: 1.3rem; }
-            .title-section h1 { font-size: 1.8rem; }
-        }
-
-        @media print {
-            body { background: white; padding: 0; }
-            .action-bar { display: none; }
-            #invoice-card { box-shadow: none; border: none; width: 100%; max-width: 100%; padding: 0; }
+            .actions-row { flex-direction: column; }
+            .btn { width: 100%; justify-content: center; }
         }
     </style>
 </head>
 <body>
 
-    <div class="action-bar">
-        <a href="courses.html" class="btn-back"><i class="fas fa-arrow-left"></i> Back to Courses</a>
-        <button class="btn-download" onclick="downloadPDF()">
-            <i class="fas fa-file-pdf"></i> Download PDF
-        </button>
+    <div class="actions-row">
+        <a href="courses.html" class="btn btn-back"><i class="fas fa-arrow-left"></i> Back to Courses</a>
+        <button onclick="downloadPDF()" class="btn btn-download"><i class="fas fa-file-pdf"></i> Download PDF</button>
     </div>
 
-    <div id="invoice-card">
+    <div id="invoice-element" class="invoice-card">
         <div class="watermark">UNPAID</div>
-        
-        <div class="content-layer">
-            <div class="inv-header">
-                <div class="logo-section">
-                    <h2>FBA ACADEMY</h2>
-                    <p>Food Business Academy Ltd.</p>
-                    <p>Harare, Zimbabwe</p>
-                    <p>+263 773 371 163</p>
-                </div>
-                <div class="title-section">
-                    <h1>INVOICE</h1>
-                    <div class="date-badge">Date: <span id="inv-date">...</span></div>
-                </div>
-            </div>
 
-            <div class="billing-grid">
-                <div>
-                    <span class="bill-label">Billed To</span>
-                    <div class="bill-value" id="student-name">Loading...</div>
-                    <div style="font-size: 0.9rem; color: var(--text-light);" id="student-email">...</div>
+        <div class="header">
+            <div class="brand">
+                <h2>FBA ACADEMY</h2>
+                <p>Food Business Academy Ltd.</p>
+                <p>+263 773 371 163</p>
+            </div>
+            <div class="title-block">
+                <h1>INVOICE</h1>
+                <div class="date-label">Date: <span id="inv-date">Loading...</span></div>
+            </div>
+        </div>
+
+        <div class="details-grid">
+            <div class="detail-group">
+                <span class="label">Billed To</span>
+                <div class="value" id="student-name">...</div>
+                <div class="value" style="font-size: 0.9rem; font-weight: 400;" id="student-email">Loading...</div>
+            </div>
+            <div class="detail-group">
+                <span class="label">Invoice Details</span>
+                <div class="value">
+                    Ref: <span id="inv-number" class="invoice-number-display">Loading...</span>
                 </div>
-                <div style="text-align: right;">
-                    <span class="bill-label">Invoice Number</span>
-                    <div class="bill-value" style="color: var(--primary); font-family: monospace; font-size: 1.2rem;" id="inv-number">
-                        Searching...
-                    </div>
-                    <div style="margin-top:5px; font-size:0.85rem; color:var(--text-light);">Method: <span id="pay-method">...</span></div>
-                </div>
+                <div style="margin-top: 5px; font-size: 0.85rem;">Method: <span id="payment-method">...</span></div>
             </div>
+        </div>
 
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th style="text-align: center;">Qty</th>
-                            <th style="text-align: right;">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>
-                                <div style="font-weight: 700;" id="course-name">Course Name</div>
-                                <div style="font-size: 0.85rem; color: var(--text-light);">Module Access</div>
-                            </td>
-                            <td style="text-align: center;">1</td>
-                            <td style="text-align: right; font-weight: 700;" id="course-price">$...</td>
-                        </tr>
-                        <tr class="total-row">
-                            <td></td>
-                            <td style="text-align: right; font-weight: 600; color: var(--text-light); white-space: nowrap;">Grand Total:</td>
-                            <td style="text-align: right;">
-                                <div class="total-box" id="total-price">$...</div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Description</th>
+                        <th width="50" style="text-align: center;">Qty</th>
+                        <th width="80" style="text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600;" id="course-name">Course Name</div>
+                            <small style="color: var(--text-light);">Online Module Access</small>
+                        </td>
+                        <td style="text-align: center;">1</td>
+                        <td style="text-align: right;" id="course-price">$0.00</td>
+                    </tr>
+                    <tr class="total-row">
+                        <td colspan="2" style="text-align: right;">Total Due:</td>
+                        <td style="text-align: right;" id="total-price">$0.00</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
 
-            <div class="instructions">
-                <h4><i class="fas fa-info-circle"></i> Payment Instructions</h4>
-                <p><strong>EcoCash:</strong> 0773371163 (Petronela H.)</p>
-                <p><strong>OneMoney:</strong> 0718625498</p>
-                <p><strong>Bank:</strong> FBC / CBZ Academy Account</p>
-                <p style="margin-top: 10px; font-weight: 700; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 8px;">
-                    Send proof of payment to WhatsApp: +263 773 371 163
-                </p>
-            </div>
-
-            <div class="footer">
-                Thank you for choosing Food Business Academy. Empowering food entrepreneurs.
-            </div>
+        <div class="instructions">
+            <strong>Payment Instructions:</strong>
+            <p>EcoCash: 0773371163 (Petronela H.)</p>
+            <p>OneMoney: 0718625498</p>
+            <p>Bank: FBC / CBZ Academy Account</p>
+            <p style="margin-top: 8px; font-weight: 700;">Proof of Payment: WhatsApp +263 773 371 163</p>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-        import { getFirestore, collection, query, where, getDocs, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
@@ -307,104 +250,96 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Get URL Params
+        // 1. Get URL Params
         const urlParams = new URLSearchParams(window.location.search);
-        const courseNameParam = urlParams.get('name');
+        const courseNameParam = decodeURIComponent(urlParams.get('name') || '');
         const priceParam = urlParams.get('price');
 
-        // Basic fill from URL first (Instant visual feedback)
+        // 2. Pre-fill visual data (Instant feedback)
         if(courseNameParam) document.getElementById('course-name').textContent = courseNameParam;
         if(priceParam) {
-            document.getElementById('course-price').textContent = `$${priceParam}`;
-            document.getElementById('total-price').textContent = `$${priceParam}`;
+            document.getElementById('course-price').textContent = "$" + priceParam;
+            document.getElementById('total-price').textContent = "$" + priceParam;
         }
 
         onAuthStateChanged(auth, async (user) => {
             if (!user) {
-                // If not logged in, show what we can from URL but warn
-                document.getElementById('student-name').textContent = "Please Login";
+                window.location.href = "login.html";
                 return;
             }
 
-            // Fill basic user info
             document.getElementById('student-email').textContent = user.email;
-            
-            // Try to find the Display Name (stored in payment-preview) or fallback
-            document.getElementById('student-name').textContent = user.displayName || "Student Member";
+            document.getElementById('student-name').textContent = user.displayName || "Student";
 
-            // --- CRITICAL: FETCHING THE EXACT INVOICE ---
-            // We search for pending payments for this course and student.
+            // 3. FETCH DATA FROM FIRESTORE
             try {
+                // Querying by Email and CourseName (as per your data structure)
                 const q = query(
                     collection(db, "payments"), 
-                    where("studentId", "==", user.uid), 
-                    where("courseName", "==", courseNameParam),
-                    where("status", "==", "pending"),
-                    orderBy("createdAt", "desc"), // Get the most recent one
-                    limit(1)
+                    where("email", "==", user.email),
+                    where("courseName", "==", courseNameParam)
                 );
 
                 const querySnapshot = await getDocs(q);
                 
                 if (!querySnapshot.empty) {
-                    const docSnap = querySnapshot.docs[0];
-                    const data = docSnap.data();
+                    // We might get multiple attempts. Let's find the most recent one manually
+                    // to avoid needing a Composite Index right now.
+                    let latestDoc = null;
+                    let latestTime = 0;
 
-                    // 1. INVOICE NUMBER LOGIC
-                    // We check the field 'invoiceNumber', if missing, we use the Document ID
-                    const displayInvNum = data.invoiceNumber || docSnap.id;
-                    document.getElementById('inv-number').textContent = displayInvNum;
+                    querySnapshot.forEach((doc) => {
+                        const d = doc.data();
+                        // Convert Firestore timestamp to milliseconds
+                        const time = d.createdAt && d.createdAt.seconds ? d.createdAt.seconds : 0;
+                        if(time >= latestTime) {
+                            latestTime = time;
+                            latestDoc = d;
+                        }
+                    });
 
-                    // 2. OTHER DETAILS
-                    if (data.studentName) document.getElementById('student-name').textContent = data.studentName;
-                    if (data.paymentMethod) document.getElementById('pay-method').textContent = data.paymentMethod;
-                    
-                    // 3. DATE
-                    // If 'createdAt' is a Firestore timestamp, convert it. Otherwise use current date.
-                    if (data.createdAt && data.createdAt.toDate) {
-                        document.getElementById('inv-date').textContent = data.createdAt.toDate().toLocaleDateString();
-                    } else {
-                        document.getElementById('inv-date').textContent = new Date().toLocaleDateString();
+                    if (latestDoc) {
+                        // --- HERE IS THE FIX ---
+                        // We strictly use the 'invoiceNumber' field from the data
+                        if (latestDoc.invoiceNumber) {
+                            document.getElementById('inv-number').textContent = latestDoc.invoiceNumber;
+                        } else {
+                            // Fallback only if the field is missing
+                            document.getElementById('inv-number').textContent = "PENDING";
+                        }
+
+                        // Fill other details
+                        if(latestDoc.paymentMethod) document.getElementById('payment-method').textContent = latestDoc.paymentMethod;
+                        if(latestDoc.price) {
+                            document.getElementById('course-price').textContent = "$" + latestDoc.price;
+                            document.getElementById('total-price').textContent = "$" + latestDoc.price;
+                        }
+
+                        // Format Date
+                        if(latestDoc.createdAt && latestDoc.createdAt.toDate) {
+                            document.getElementById('inv-date').textContent = latestDoc.createdAt.toDate().toLocaleDateString();
+                        }
                     }
-
-                    // 4. PRICE (Confirming from DB)
-                    document.getElementById('course-price').textContent = `$${data.price}`;
-                    document.getElementById('total-price').textContent = `$${data.price}`;
-
                 } else {
-                    // No database record found? Generate a placeholder based on logic
-                    console.log("Invoice not found in DB, using placeholder.");
-                    document.getElementById('inv-number').textContent = "PENDING-GEN"; 
-                    document.getElementById('inv-date').textContent = new Date().toLocaleDateString();
+                    document.getElementById('inv-number').textContent = "NOT FOUND";
                 }
             } catch (error) {
-                console.error("Error fetching invoice:", error);
-                document.getElementById('inv-number').textContent = "ERR-LOAD"; 
+                console.error("Error:", error);
+                document.getElementById('inv-number').textContent = "ERROR";
             }
         });
 
-        // PDF Download Function
         window.downloadPDF = function() {
-            const element = document.getElementById('invoice-card');
+            const element = document.getElementById('invoice-element');
             const invNum = document.getElementById('inv-number').textContent.trim();
-            
-            // Configuration for high quality mobile-friendly PDF
             const opt = {
                 margin: 0.2,
-                filename: `FBA_Invoice_${invNum}.pdf`,
+                filename: `Invoice_${invNum}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
             };
-            
-            // Visual feedback
-            const btn = document.querySelector('.btn-download');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-            
-            html2pdf().set(opt).from(element).save().then(() => {
-                btn.innerHTML = originalText;
-            });
+            html2pdf().set(opt).from(element).save();
         };
     </script>
 </body>
