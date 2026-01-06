@@ -10,7 +10,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
-        /* --- EXACT STYLES FROM YOUR PREVIEW PAGE --- */
         :root {
             --primary: #4f46e5;
             --secondary: #7c3aed;
@@ -27,13 +26,11 @@
             min-height: 100vh;
         }
 
-        /* Container for the page view */
         .page-container {
             max-width: 800px;
             margin: 0 auto;
         }
 
-        /* Navigation Buttons */
         .nav-actions {
             display: flex;
             justify-content: space-between;
@@ -55,17 +52,15 @@
         .btn-download { background: var(--primary); color: white; }
         .btn-download:hover { background: #4338ca; }
 
-        /* --- THE INVOICE PAPER (Copied from your modal) --- */
         #invoice-paper {
             background: #fff;
             padding: 40px;
             border-radius: 4px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             position: relative;
-            overflow: hidden; /* Ensures watermark stays inside */
+            overflow: hidden;
         }
 
-        /* Unpaid Watermark */
         .unpaid-stamp {
             position: absolute;
             top: 40%; left: 50%;
@@ -85,24 +80,21 @@
         }
         
         .paid-stamp {
-            color: #10b981; /* Green */
+            color: #10b981;
             border-color: #10b981;
         }
 
-        /* Invoice Header */
         .inv-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; position: relative; z-index: 1; }
         .inv-logo img { height: 80px; width: auto; object-fit: contain; }
         .inv-title { text-align: right; }
         .inv-title h2 { margin: 0; color: #222; font-size: 32px; letter-spacing: 2px; }
         .inv-meta { margin-top: 10px; font-size: 14px; color: #666; }
 
-        /* Invoice Table */
         .inv-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; position: relative; z-index: 1; }
         .inv-table th { text-align: left; background: #f8f9fa; padding: 12px; font-size: 12px; text-transform: uppercase; color: #555; border-bottom: 2px solid #ddd; }
         .inv-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; vertical-align: middle; }
         .inv-total-row td { border-top: 2px solid #333; font-weight: 700; font-size: 16px; color: #000; }
 
-        /* Payment Details Boxes */
         .pay-box { background: #f0f7ff; border: 1px solid #cce5ff; border-radius: 8px; padding: 20px; margin-bottom: 20px; position: relative; z-index: 1; }
         .pay-header { font-weight: 700; color: #004085; margin-bottom: 10px; font-size: 15px; border-bottom: 1px solid #b8daff; padding-bottom: 5px; display: block; }
         .pay-details { font-size: 14px; line-height: 1.6; color: #333; }
@@ -113,15 +105,6 @@
 
         .inv-footer { text-align: center; font-size: 12px; color: #777; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; position: relative; z-index: 1; }
 
-        /* Hide buttons when printing */
-        @media print {
-            body { background: white; padding: 0; }
-            .nav-actions { display: none; }
-            .page-container { max-width: 100%; margin: 0; box-shadow: none; }
-            #invoice-paper { box-shadow: none; padding: 20px; }
-        }
-        
-        /* Loading State */
         .loading-overlay {
             position: absolute; top:0; left:0; width:100%; height:100%;
             background: rgba(255,255,255,0.9); z-index: 10;
@@ -211,159 +194,84 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-                            
-                <script>
-    // --- 1. CONFIGURATION ---
-    const firebaseConfig = {
-        apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
-        authDomain: "students-login-29409.firebaseapp.com",
-        projectId: "students-login-29409",
-        storageBucket: "students-login-29409.firebasestorage.app",
-        messagingSenderId: "634331456872",
-        appId: "1:634331456872:web:6dae360c5e28d8356562dd",
-        measurementId: "G-96XXYG1VR2"
-    };
-
-    if (!firebase.apps.length) {
-        firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-
-    // --- 2. GET PARAMS FROM URL ---
-    const urlParams = new URLSearchParams(window.location.search);
-    // Support ?id= or ?invoiceId=
-    const invoiceId = urlParams.get('id') || urlParams.get('invoiceId'); 
-    const courseNameParam = urlParams.get('name');
-
-    // --- 3. AUTH & DATA EXTRACTION ---
-    auth.onAuthStateChanged(async (user) => {
-        if (!user) {
-            console.log("User not logged in, redirecting...");
-            // window.location.href = "login.html"; // Uncomment when ready
-            return;
-        }
-
-        console.log("User detected:", user.email);
-
-        try {
-            let invoiceData = null;
-            let finalId = "";
-
-            // --- STRATEGY A: Fetch by specific Invoice ID (Best/Fastest) ---
-            if (invoiceId) {
-                console.log("Attempting to fetch by ID:", invoiceId);
-                const docSnap = await db.collection("payments").doc(invoiceId).get();
-                
-                // We check if it exists AND if the user owns it (security check)
-                if (docSnap.exists) {
-                    const data = docSnap.data();
-                    // Double check email matches to be safe on client side
-                    if(data.email === user.email || data.studentId === user.uid) {
-                        invoiceData = data;
-                        finalId = docSnap.id;
-                    }
-                }
-            } 
-            
-            // --- STRATEGY B: Fetch by Course Name (Fallback) ---
-            // REMOVED .orderBy() to prevent "Missing Index" errors
-            if (!invoiceData && courseNameParam) {
-                console.log("Attempting to fetch by Course Name:", courseNameParam);
-                
-                const snapshot = await db.collection("payments")
-                    .where("email", "==", user.email)
-                    .where("courseName", "==", courseNameParam)
-                    .get();
-
-                if (!snapshot.empty) {
-                    // Manually sort results in Javascript to find the newest one
-                    // This avoids needing a composite index in Firebase Console
-                    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    
-                    // Sort descending by createdAt (Newest first)
-                    docs.sort((a, b) => {
-                        const dateA = a.createdAt ? a.createdAt.seconds : 0;
-                        const dateB = b.createdAt ? b.createdAt.seconds : 0;
-                        return dateB - dateA;
-                    });
-
-                    invoiceData = docs[0]; // Take the newest one
-                    finalId = docs[0].id;
-                }
-            }
-
-            // --- 4. DISPLAY OR ERROR ---
-            if (invoiceData) {
-                console.log("Invoice Found:", finalId);
-                populateInvoice(invoiceData, finalId);
-            } else {
-                console.warn("No matching invoice found.");
-                document.getElementById('loading-msg').innerHTML = 
-                    `No invoice found.<br><br>
-                     <small>Ensure you have clicked "Generate Invoice" on the previous page.</small>`;
-            }
-
-        } catch (error) {
-            // This logs the ACTUAL error to your browser console (F12)
-            console.error("FULL ERROR DETAILS:", error);
-            
-            let errorMsg = "Error accessing database.";
-            if (error.code === 'permission-denied') {
-                errorMsg = "You do not have permission to view this invoice.";
-            }
-            document.getElementById('loading-msg').textContent = errorMsg;
-        }
-    });
-
-    function populateInvoice(data, id) {
-        document.getElementById('loading-msg').style.display = 'none';
-
-        // Fill text fields
-        document.getElementById('inv-num').textContent = data.invoiceNumber || id;
-        document.getElementById('inv-method').textContent = data.paymentMethod || "N/A";
-        document.getElementById('inv-student-name').textContent = data.studentName || "Student";
-        document.getElementById('inv-student-email').textContent = data.email || "";
-        document.getElementById('inv-course-name').textContent = data.courseName || "Course";
-        
-        // Fill prices
-        const price = data.price || "0.00";
-        document.getElementById('inv-course-price').textContent = "$" + price;
-        document.getElementById('inv-final-total').textContent = "$" + price;
-
-        // Format Date safely
-        if (data.createdAt && data.createdAt.toDate) {
-            const date = data.createdAt.toDate();
-            document.getElementById('inv-date').textContent = date.toLocaleDateString('en-GB', {
-                day: 'numeric', month: 'short', year: 'numeric'
-            });
-        } else {
-            // Fallback if timestamp is missing or local
-            document.getElementById('inv-date').textContent = new Date().toLocaleDateString();
-        }
-
-        // Update Watermark based on saved status
-        const wm = document.getElementById('watermark');
-        // Check for various ways 'paid' might be stored
-        if (data.status === 'paid' || data.status === 'approved' || data.status === 'Paid') {
-            wm.textContent = "PAID";
-            wm.classList.add('paid-stamp');
-        } else {
-            wm.textContent = "UNPAID";
-            wm.classList.remove('paid-stamp');
-        }
-    }
-
-    function downloadPDF() {
-        const element = document.getElementById('invoice-paper');
-        const invNum = document.getElementById("inv-num").textContent.trim();
-        const opt = {
-            margin: 0.2, 
-            filename: `Invoice_${invNum}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+            authDomain: "students-login-29409.firebaseapp.com",
+            projectId: "students-login-29409",
+            storageBucket: "students-login-29409.firebasestorage.app",
+            messagingSenderId: "634331456872",
+            appId: "1:634331456872:web:6dae360c5e28d8356562dd",
+            measurementId: "G-96XXYG1VR2"
         };
-        html2pdf().set(opt).from(element).save();
-    }
-</script>
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+
+        auth.onAuthStateChanged(async (user) => {
+            if (!user) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const invoiceId = urlParams.get('id');
+
+            if (invoiceId) {
+                try {
+                    const docSnap = await db.collection("payments").doc(invoiceId).get();
+                    if (docSnap.exists) {
+                        populateInvoice(docSnap.data(), docSnap.id);
+                    } else {
+                        // FIX: Added a 2.5 second wait for slow databases
+                        setTimeout(async () => {
+                            const retry = await db.collection("payments").doc(invoiceId).get();
+                            if (retry.exists) populateInvoice(retry.data(), retry.id);
+                            else document.getElementById('loading-msg').textContent = "Invoice not found. Please try generating again.";
+                        }, 2500);
+                    }
+                } catch (e) {
+                    document.getElementById('loading-msg').textContent = "Database Error.";
+                }
+            } else {
+                document.getElementById('loading-msg').textContent = "No Invoice ID provided in the URL.";
+            }
+        });
+
+        function populateInvoice(data, id) {
+            document.getElementById('loading-msg').style.display = 'none';
+            document.getElementById('inv-num').textContent = data.invoiceNumber || id;
+            document.getElementById('inv-method').textContent = data.paymentMethod || "N/A";
+            document.getElementById('inv-student-name').textContent = data.studentName || "Student";
+            document.getElementById('inv-student-email').textContent = data.email || "";
+            document.getElementById('inv-course-name').textContent = data.courseName || "Course";
+            document.getElementById('inv-course-price').textContent = "$" + (data.price || "0.00");
+            document.getElementById('inv-final-total').textContent = "$" + (data.price || "0.00");
+            
+            const date = data.createdAt ? data.createdAt.toDate().toLocaleDateString() : new Date().toLocaleDateString();
+            document.getElementById('inv-date').textContent = date;
+
+            const wm = document.getElementById('watermark');
+            if (data.status === 'paid' || data.status === 'approved') {
+                wm.textContent = "PAID";
+                wm.classList.add('paid-stamp');
+            }
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('invoice-paper');
+            const opt = {
+                margin: 0.2, 
+                filename: 'Invoice.pdf',
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+    </script>
+</body>
+</html>
