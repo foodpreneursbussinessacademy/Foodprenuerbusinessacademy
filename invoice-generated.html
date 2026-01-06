@@ -211,8 +211,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
-    <script>
+                            <script>
         // --- 1. CONFIGURATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
@@ -230,109 +229,103 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
 
-        // --- 2. GET INVOICE ID FROM URL ---
+        // --- 2. GET PARAMS FROM URL ---
         const urlParams = new URLSearchParams(window.location.search);
-        // Supports ?id=FBA-123 or ?invoiceId=FBA-123
         const invoiceId = urlParams.get('id') || urlParams.get('invoiceId');
+        const courseNameParam = urlParams.get('name');
 
-        // --- 3. FETCH & DISPLAY DATA ---
+        // --- 3. AUTH & DATA EXTRACTION ---
         auth.onAuthStateChanged(async (user) => {
             if (!user) {
-                // Optional: Redirect to login if sensitive, or just show minimal view
-                console.log("User not logged in");
+                window.location.href = "login.html"; // Redirect if not logged in
+                return;
             }
 
-            if (invoiceId) {
-                try {
-                    const docRef = db.collection("payments").doc(invoiceId);
-                    const docSnap = await docRef.get();
+            try {
+                let invoiceData = null;
+                let finalId = "";
 
+                // STRATEGY A: Fetch by specific ID (Best for direct links)
+                if (invoiceId) {
+                    const docSnap = await db.collection("payments").doc(invoiceId).get();
                     if (docSnap.exists) {
-                        const data = docSnap.data();
-                        populateInvoice(data, docSnap.id);
-                    } else {
-                        alert("Invoice not found!");
-                        document.getElementById('loading-msg').textContent = "Invoice Not Found";
+                        invoiceData = docSnap.data();
+                        finalId = docSnap.id;
                     }
-                } catch (error) {
-                    console.error("Error fetching invoice:", error);
-                    document.getElementById('loading-msg').textContent = "Error loading invoice.";
+                } 
+                
+                // STRATEGY B: Extract the LATEST saved invoice for this user/course
+                if (!invoiceData && courseNameParam) {
+                    const snapshot = await db.collection("payments")
+                        .where("email", "==", user.email)
+                        .where("courseName", "==", courseNameParam)
+                        .orderBy("createdAt", "desc")
+                        .limit(1)
+                        .get();
+
+                    if (!snapshot.empty) {
+                        invoiceData = snapshot.docs[0].data();
+                        finalId = snapshot.docs[0].id;
+                    }
                 }
-            } else {
-                // FALLBACK: If no ID in URL, try to load data passed via URL params (preview mode)
-                const nameParam = urlParams.get('name');
-                const priceParam = urlParams.get('price');
-                if(nameParam && priceParam) {
-                     populateInvoice({
-                        invoiceNumber: "PREVIEW",
-                        courseName: nameParam,
-                        price: priceParam,
-                        paymentMethod: "Pending Selection",
-                        studentName: user ? user.displayName : "Student",
-                        email: user ? user.email : "...",
-                        createdAt: { toDate: () => new Date() }, // Fake timestamp
-                        status: "pending"
-                     }, "PREVIEW");
+
+                // --- 4. DISPLAY THE EXTRACTED DATA ---
+                if (invoiceData) {
+                    populateInvoice(invoiceData, finalId);
                 } else {
-                    document.getElementById('loading-msg').textContent = "No Invoice Specified.";
+                    document.getElementById('loading-msg').textContent = "No saved invoice found for this course.";
                 }
+
+            } catch (error) {
+                console.error("Error extracting invoice:", error);
+                document.getElementById('loading-msg').textContent = "Error accessing database.";
             }
         });
 
         function populateInvoice(data, id) {
-            // Remove Loading
             document.getElementById('loading-msg').style.display = 'none';
 
-            // 1. Basic Fields
+            // Fill text fields
             document.getElementById('inv-num').textContent = data.invoiceNumber || id;
             document.getElementById('inv-method').textContent = data.paymentMethod || "N/A";
             document.getElementById('inv-student-name').textContent = data.studentName || "Student";
             document.getElementById('inv-student-email').textContent = data.email || "";
             document.getElementById('inv-course-name').textContent = data.courseName || "Course";
             
-            // 2. Prices
+            // Fill prices
             const price = data.price || "0.00";
             document.getElementById('inv-course-price').textContent = "$" + price;
             document.getElementById('inv-final-total').textContent = "$" + price;
 
-            // 3. Date Formatting
+            // Format Date
             if (data.createdAt && data.createdAt.toDate) {
                 const date = data.createdAt.toDate();
-                document.getElementById('inv-date').textContent = date.toLocaleDateString();
-            } else {
-                document.getElementById('inv-date').textContent = new Date().toLocaleDateString();
+                document.getElementById('inv-date').textContent = date.toLocaleDateString('en-GB', {
+                    day: 'numeric', month: 'short', year: 'numeric'
+                });
             }
 
-            // 4. Status / Watermark Logic
+            // Update Watermark based on saved status
             const wm = document.getElementById('watermark');
             if (data.status === 'paid' || data.status === 'approved') {
                 wm.textContent = "PAID";
                 wm.classList.add('paid-stamp');
-                wm.style.borderColor = "#10b981"; // Green
-                wm.style.color = "#10b981";
             } else {
                 wm.textContent = "UNPAID";
                 wm.classList.remove('paid-stamp');
             }
         }
 
-        // --- 4. PDF DOWNLOAD FUNCTION ---
         function downloadPDF() {
             const element = document.getElementById('invoice-paper');
-            // Temporarily hide the watermark for cleaner PDF if desired, or keep it.
-            // keeping it as per request.
-            
             const invNum = document.getElementById("inv-num").textContent.trim();
             const opt = {
-                margin: 0, 
+                margin: 0.2, 
                 filename: `Invoice_${invNum}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true },
                 jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
             };
-            
             html2pdf().set(opt).from(element).save();
         }
     </script>
-</body>
-</html>
