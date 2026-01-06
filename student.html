@@ -2,335 +2,290 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Student Portal | Food Business Academy</title>
+<title>Food Business Academy | Student Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
 <style>
-:root {
-    /* 2026 Holographic Palette */
-    --bg-dark: #09090b;
-    --surface-glass: rgba(255, 255, 255, 0.08);
-    --surface-glass-hover: rgba(255, 255, 255, 0.12);
-    --border-glass: rgba(255, 255, 255, 0.15);
-    
-    --primary-accent: #6366f1; /* Indigo */
-    --secondary-accent: #ec4899; /* Pink */
-    --success-accent: #10b981; /* Emerald */
-    
-    --text-main: #ffffff;
-    --text-muted: #a1a1aa;
-    
-    --glow: 0 0 20px rgba(99, 102, 241, 0.3);
+:root{
+  --purple:#6d28d9;
+  --blue:#2563eb;
+  --bg:linear-gradient(180deg,#eef2ff,#f9fbff);
+  --text:#1f2937;
+  --soft:rgba(255,255,255,.95);
+  
+  /* Course Card Accents */
+  --accent-yellow: #f59e0b;
+  --accent-green: #10b981;
+  --accent-red: #dc2626;
+  --card-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; outline: none; -webkit-tap-highlight-color: transparent; }
+*{box-sizing:border-box;font-family:'Poppins',sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);overflow-x:hidden}
 
-body {
-    background: var(--bg-dark);
-    color: var(--text-main);
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
-    display: flex;
+/* Layout */
+.layout{
+  display:grid;
+  grid-template-columns:280px 1fr;
+  min-height:100vh;
 }
 
-/* --- LIVE ANIMATED BACKGROUND --- */
-.ambient-mesh {
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
-    background: radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.15), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.15), transparent 25%);
-    filter: blur(60px);
-    animation: pulseMesh 10s infinite alternate;
+/* Sidebar */
+.sidebar{
+  background:linear-gradient(180deg,var(--blue),var(--purple));
+  color:#fff;
+  padding:25px;
 }
-@keyframes pulseMesh {
-    0% { opacity: 0.8; transform: scale(1); }
-    100% { opacity: 1; transform: scale(1.1); }
+.sidebar h2{margin-bottom:20px}
+.sidebar a{
+  display:flex;gap:12px;align-items:center;
+  color:#e5e7eb;text-decoration:none;
+  padding:12px;border-radius:12px;margin-bottom:8px;
+  transition:.25s;
 }
+.sidebar a:hover{
+  background:rgba(255,255,255,.2);
+  transform:translateX(6px);
+}
+.sidebar .logout{background:#ef4444;color:#fff}
 
-/* --- SIDEBAR (Navigation) --- */
-.sidebar {
-    width: 280px;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.2);
-    border-right: 1px solid var(--border-glass);
-    backdrop-filter: blur(20px);
-    padding: 30px 20px;
-    display: flex; flex-direction: column;
-    position: sticky; top: 0;
-    z-index: 100;
+/* Main */
+.main{
+  padding:28px;
+  animation:pageIn .5s ease;
 }
-
-.brand-logo {
-    display: flex; align-items: center; gap: 12px;
-    font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px;
-    margin-bottom: 40px; padding-left: 10px;
-}
-.brand-icon {
-    width: 36px; height: 36px;
-    background: linear-gradient(135deg, var(--primary-accent), var(--secondary-accent));
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: var(--glow);
-    font-size: 1.2rem;
-}
-
-.nav-menu { flex-grow: 1; display: flex; flex-direction: column; gap: 8px; }
-.nav-link {
-    display: flex; align-items: center; gap: 15px;
-    padding: 14px 16px;
-    color: var(--text-muted);
-    text-decoration: none;
-    border-radius: 14px;
-    font-weight: 500;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative; overflow: hidden;
-}
-.nav-link i { width: 20px; text-align: center; transition: 0.3s; }
-
-/* Hover Effects */
-.nav-link:hover, .nav-link.active {
-    background: var(--surface-glass);
-    color: white;
-    border: 1px solid var(--border-glass);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-}
-.nav-link:hover i { color: var(--primary-accent); transform: scale(1.2); }
-
-.nav-divider { height: 1px; background: var(--border-glass); margin: 20px 0; }
-.logout-btn { color: #ef4444; }
-.logout-btn:hover { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); }
-
-/* --- MAIN CONTENT --- */
-.main-wrapper {
-    flex-grow: 1;
-    padding: 40px 50px;
-    max-width: 1600px;
-    margin: 0 auto;
+@keyframes pageIn{
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
 }
 
 /* Header */
-.top-bar {
-    display: flex; justify-content: space-between; align-items: center;
-    margin-bottom: 50px;
-    animation: slideDown 0.6s ease-out;
+.top-header{
+  display:flex;justify-content:space-between;align-items:center;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  color:#fff;
+  padding:20px 24px;
+  border-radius:20px;
 }
-.welcome-msg h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: 5px; }
-.welcome-msg p { color: var(--text-muted); font-size: 1rem; }
-
-.user-profile {
-    display: flex; align-items: center; gap: 15px;
-    background: var(--surface-glass);
-    padding: 8px 10px 8px 20px;
-    border-radius: 50px;
-    border: 1px solid var(--border-glass);
-}
-.user-info { text-align: right; }
-.user-info span { display: block; font-weight: 600; font-size: 0.9rem; }
-.user-info small { color: var(--text-muted); font-size: 0.75rem; }
-.avatar-circle {
-    width: 42px; height: 42px; border-radius: 50%;
-    background: white; color: var(--bg-dark);
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700;
+.badge{
+  background:rgba(255,255,255,.2);
+  padding:6px 14px;border-radius:999px;
+  font-size:14px;
 }
 
-/* --- INSTRUCTION BANNER --- */
-.instruction-card {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(236, 72, 153, 0.1));
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-left: 4px solid var(--primary-accent);
-    border-radius: 16px;
-    padding: 25px 30px;
-    margin-bottom: 40px;
-    display: flex; gap: 20px; align-items: start;
-    animation: fadeIn 0.8s ease-out;
-    backdrop-filter: blur(10px);
+/* HERO SLIDER */
+.hero{
+  margin:28px 0;
+  position:relative;
+  height:260px;
+  border-radius:26px;
+  overflow:hidden;
 }
-.info-icon {
-    font-size: 1.5rem; color: var(--primary-accent);
-    background: rgba(99, 102, 241, 0.2);
-    width: 50px; height: 50px; border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
+.slide{
+  position:absolute;
+  inset:0;
+  background-size:cover;
+  background-position:center;
+  opacity:0;
+  transition:opacity 1s ease;
 }
-.info-content h3 { margin: 0 0 5px 0; font-size: 1.1rem; }
-.info-content p { margin: 0; color: var(--text-muted); font-size: 0.95rem; line-height: 1.5; }
+.slide.active{opacity:1}
+.hero-overlay{
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg,rgba(0,0,0,.6),transparent);
+  display:flex;
+  align-items:center;
+  padding:40px;
+  color:#fff;
+}
+.hero h2{font-size:32px;margin:0}
+.hero p{max-width:480px;margin-top:10px}
 
-/* --- 3D COURSE GRID --- */
-.section-title { font-size: 1.2rem; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
-.section-title::after { content: ''; flex-grow: 1; height: 1px; background: var(--border-glass); }
-
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 30px;
-    padding-bottom: 50px;
+/* Stats */
+.glass{
+  background:rgba(255,255,255,.7);
+  backdrop-filter:blur(14px);
+  border-radius:22px;
+  box-shadow:0 25px 45px rgba(0,0,0,.12);
 }
 
-/* 3D Card Style */
+.stats{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:18px;
+  margin-bottom:26px;
+}
+.stat-card{
+  padding:22px;
+  color:#111;
+  position:relative;
+}
+.stat-card i{
+  font-size:28px;
+  color:var(--purple);
+}
+.stat-value{
+  font-size:32px;
+  font-weight:700;
+}
+.stat-title{opacity:.7}
+
+/* Page transition */
+#pageTransition{
+  position:fixed;
+  inset:0;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  z-index:999;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .45s ease;
+}
+#pageTransition.active{
+  opacity:1;
+  pointer-events:auto;
+}
+
+/* --- COURSE CARD STYLES --- */
+.section-heading { font-size: 1.25rem; font-weight: 700; margin-bottom: 20px; color: var(--text); }
+
+.courses-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 25px;
+  margin-bottom: 40px;
+}
+
 .course-card {
-    background: var(--surface-glass);
-    border: 1px solid var(--border-glass);
-    border-radius: 24px;
-    padding: 6px; /* Inner spacing for border effect */
-    transition: transform 0.4s var(--ease-spring), box-shadow 0.4s;
-    position: relative;
-    overflow: hidden;
+  background: #fff;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+  border: 1px solid #e5e7eb;
+  transition: transform 0.3s ease;
+  display: flex; flex-direction: column;
+  position: relative;
 }
-.course-card:hover {
-    transform: translateY(-8px) scale(1.01);
-    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.4);
-    border-color: rgba(255,255,255,0.3);
+.course-card:hover { transform: translateY(-5px); border-color: var(--blue); }
+
+.card-top-accent { height: 5px; background: linear-gradient(90deg, var(--blue), var(--purple)); width: 100%; }
+
+.card-body { padding: 25px; flex-grow: 1; }
+
+.status-badge {
+  position: absolute; top: 15px; right: 15px;
+  padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
 }
+.status-badge.approved { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+.status-badge.pending { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
 
-.card-inner {
-    background: rgba(0,0,0,0.3);
-    border-radius: 20px;
-    padding: 25px;
-    height: 100%;
-    display: flex; flex-direction: column;
+.card-title {
+  font-size: 1.2rem; font-weight: 700; color: #1e1b4b;
+  margin: 0 0 10px 0; line-height: 1.3; font-family: 'Outfit', sans-serif;
 }
+.label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: var(--blue); font-weight: 700; display: block; margin-bottom: 5px; }
 
-.status-chip {
-    position: absolute; top: 25px; right: 25px;
-    background: rgba(16, 185, 129, 0.2); color: #34d399;
-    padding: 5px 12px; border-radius: 20px;
-    font-size: 0.75rem; font-weight: 700;
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    text-transform: uppercase;
-}
+.curriculum { list-style: none; padding: 0; margin: 0; }
+.curriculum li { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; color: var(--text); }
+.curriculum li::before { content: "✓"; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; background: #ede9fe; color: var(--purple); border-radius: 50%; font-size: 10px; font-weight: bold; }
 
-.card-icon-3d {
-    font-size: 2.5rem;
-    margin-bottom: 20px;
-    background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    filter: drop-shadow(0 4px 8px rgba(99, 102, 241, 0.4));
-    width: fit-content;
-}
+.card-footer { padding: 15px 25px; background: #f8fafc; border-top: 1px solid #f1f5f9; }
+.price-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.price-val { font-size: 1.4rem; font-weight: 800; color: var(--accent-yellow); font-family: 'Outfit', sans-serif; }
 
-.card-title { font-size: 1.3rem; margin: 0 0 10px 0; font-weight: 700; line-height: 1.3; }
-.card-desc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 25px; flex-grow: 1; }
+.btn { width: 100%; padding: 12px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 0.95rem; transition: 0.2s; }
+.btn-pay { background: linear-gradient(135deg, var(--blue), var(--purple)); color: white; }
+.btn-pay:hover { filter: brightness(110%); }
+.btn-access { background: var(--accent-green); color: white; }
+.btn-pending { background: #cbd5e1; color: #475569; cursor: not-allowed; }
 
-.btn-start {
-    width: 100%;
-    padding: 16px;
-    border-radius: 14px;
-    background: white;
-    color: black;
-    border: none;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex; justify-content: center; align-items: center; gap: 8px;
-}
-.btn-start:hover {
-    background: var(--primary-accent);
-    color: white;
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
-}
+.link-cancel { display: block; text-align: center; margin-top: 8px; color: var(--accent-red); font-size: 0.8rem; cursor: pointer; }
+.link-cancel:hover { text-decoration: underline; }
 
-/* Empty State */
-.empty-box {
-    grid-column: 1/-1;
-    padding: 60px; text-align: center;
-    background: var(--surface-glass);
-    border: 1px dashed var(--text-muted);
-    border-radius: 24px;
-}
+.loading-box { grid-column: 1/-1; text-align: center; padding: 30px; color: #64748b; }
 
-/* Loading */
-.loader-container { grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted); }
-
-/* Animation Keys */
-:root { --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); }
-@keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-/* Responsive */
-@media(max-width: 900px) {
-    body { flex-direction: column; }
-    .sidebar { width: 100%; height: auto; position: relative; padding: 15px; border-right: none; border-bottom: 1px solid var(--border-glass); }
-    .nav-menu { flex-direction: row; overflow-x: auto; padding-bottom: 10px; }
-    .nav-link { white-space: nowrap; font-size: 0.9rem; padding: 10px 14px; }
-    .nav-link span { display: none; } /* Icons only on mobile for space */
-    .brand-logo { margin-bottom: 10px; }
-    .main-wrapper { padding: 20px; }
-    .top-bar { flex-direction: column-reverse; gap: 20px; align-items: flex-start; }
-    .user-profile { width: 100%; justify-content: space-between; }
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
 }
 </style>
 </head>
+
 <body>
 
-<div class="ambient-mesh"></div>
+<div id="pageTransition"></div>
 
-<nav class="sidebar">
-    <div class="brand-logo">
-        <div class="brand-icon"><i class="fa-solid fa-graduation-cap"></i></div>
-        <span>FBA Portal</span>
+<div class="layout">
+
+<aside class="sidebar">
+  <h2>FPBA Portal</h2>
+  <a href="https://foodprenuerbusinessacademdy.blogspot.com/" class="nav-link"><i class="fa fa-home"></i> Homepage</a>
+  <a href="progress.html" class="nav-link"><i class="fa fa-chart-line"></i> Progress Tracking</a>
+  <a href="courses.html" class="nav-link"><i class="fa fa-book"></i> Courses Offered</a>
+  <a href="certificates.html" class="nav-link"><i class="fa fa-certificate"></i> Certificates</a>
+  <a href="tickets.html" class="nav-link"><i class="fa fa-ticket"></i> Tickets Support</a>
+  <a href="profile.html" class="nav-link"><i class="fa fa-user"></i> Student Profile</a>
+  <a href="https://foodprenuerbusinessacademdy.blogspot.com/?m=1" class="logout" onclick="logout()"><i class="fa fa-sign-out-alt"></i> Logout</a>
+</aside>
+
+<main class="main">
+
+<div class="top-header">
+  <div>
+    <h1>Welcome, <span id="studentName">Student</span> 👋</h1>
+    <div class="badge">Student ID: <span id="studentId">...</span></div>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="slide active" style="background-image:url('https://images.unsplash.com/photo-1556911220-e15b29be8c8f')"></div>
+  <div class="slide" style="background-image:url('https://images.unsplash.com/photo-1504674900247-0877df9cc836')"></div>
+  <div class="slide" style="background-image:url('https://images.unsplash.com/photo-1600891964599-f61ba0e24092')"></div>
+
+  <div class="hero-overlay">
+    <div>
+      <h2>Build a Profitable Food Business</h2>
+      <p>Learn recipes, branding, costing, marketing & real-world food entrepreneurship skills.</p>
     </div>
+  </div>
+</div>
 
-    <div class="nav-menu">
-        <a href="https://foodprenuerbusinessacademdy.blogspot.com/" class="nav-link"><i class="fa-solid fa-house"></i> <span>Home</span></a>
-        <a href="student.html" class="nav-link active"><i class="fa-solid fa-grid-2"></i> <span>Dashboard</span></a>
-        <a href="progress.html" class="nav-link"><i class="fa-solid fa-chart-simple"></i> <span>Progress</span></a>
-        <a href="courses.html" class="nav-link"><i class="fa-solid fa-book-open"></i> <span>Courses</span></a>
-        <a href="certificates.html" class="nav-link"><i class="fa-solid fa-award"></i> <span>Certificates</span></a>
-        <a href="tickets.html" class="nav-link"><i class="fa-solid fa-ticket"></i> <span>Support</span></a>
-        <a href="profile.html" class="nav-link"><i class="fa-solid fa-user-circle"></i> <span>Profile</span></a>
-        
-        <div class="nav-divider"></div>
-        <a href="#" onclick="logout()" class="nav-link logout-btn"><i class="fa-solid fa-power-off"></i> <span>Log Out</span></a>
-    </div>
-</nav>
+<h3 class="section-heading">Available Courses & Curriculum</h3>
+<div class="courses-grid" id="coursesGrid">
+  </div>
 
-<main class="main-wrapper">
-    
-    <header class="top-bar">
-        <div class="welcome-msg">
-            <h1 id="welcomeTitle">Welcome back</h1>
-            <p>Access your premium content below.</p>
-        </div>
-        
-        <div class="user-profile">
-            <div class="user-info">
-                <span id="studentName">Loading...</span>
-                <small id="studentId">ID: ...</small>
-            </div>
-            <div class="avatar-circle" id="avatarLetter"></div>
-        </div>
-    </header>
+<h3 class="section-heading">Your Progress</h3>
+<section class="stats">
+  <div class="stat-card glass">
+    <i class="fa fa-book"></i>
+    <div class="stat-value" id="coursesEnrolled">0</div>
+    <div class="stat-title">Courses Enrolled</div>
+  </div>
 
-    <div class="instruction-card">
-        <div class="info-icon"><i class="fa-solid fa-circle-info"></i></div>
-        <div class="info-content">
-            <h3>Course Access Information</h3>
-            <p>This dashboard displays <strong>only the courses you have paid for and been approved</strong> to access. If a course you recently purchased is missing, please check the 'Pending' section on the main course catalog or open a support ticket.</p>
-        </div>
-    </div>
+  <div class="stat-card glass">
+    <i class="fa fa-chart-line"></i>
+    <div class="stat-value" id="completionRate">0%</div>
+    <div class="stat-title">Completion Rate</div>
+  </div>
 
-    <div class="section-title">Your Active Classrooms</div>
-    
-    <div class="grid" id="coursesGrid">
-        <div class="loader-container">
-            <i class="fa-solid fa-spinner fa-spin fa-2x"></i>
-            <p style="margin-top:15px">Verifying enrollment...</p>
-        </div>
-    </div>
+  <div class="stat-card glass">
+    <i class="fa fa-certificate"></i>
+    <div class="stat-value" id="certificatesCount">0</div>
+    <div class="stat-title">Certificates</div>
+  </div>
+</section>
 
 </main>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-/* --- CONFIGURATION --- */
+/* 1. INITIALIZE FIREBASE */
 const firebaseConfig = {
   apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
   authDomain: "students-login-29409.firebaseapp.com",
@@ -345,120 +300,234 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Course Metadata (Icons & Links)
-const coursesDB = [
+/* 2. DEFINE COURSES DATA (UPDATED) */
+const coursesData = [
   {
     name: "Food Business Management Course",
-    icon: "fa-briefcase",
-    desc: "Complete guide to operations, compliance, and models.",
-    link: "course-food-business-management.html"
+    price: 49,
+    overview: "The flagship program for aspiring entrepreneurs. This course covers the entire ecosystem of running a compliant and profitable food business.",
+    curriculum: ["Business Model Canvas", "Operations & Compliance", "HACCP & Food Safety", "Supply Chain Logistics", "Digital Marketing Strategy"]
   },
   {
     name: "Financial Management for Food Processors",
-    icon: "fa-chart-line",
-    desc: "Master costing, yields, pricing and cashflow.",
-    link: "course-financial-management.html"
+    price: 59,
+    overview: "Understand the unique economics of food processing. Learn to manage yield loss, calculate unit costs accurately, and forecast cash flow.",
+    curriculum: ["Unit Costing & Yield Analysis", "Pricing for Retail vs Wholesale", "Cash Flow Management", "Budgeting for Seasonality", "Profit Maximization"]
   },
   {
     name: "Food Value Addition Course for Farmers",
-    icon: "fa-leaf",
-    desc: "Processing and packaging technology for raw produce.",
-    link: "course-value-addition.html"
+    price: 45,
+    overview: "Stop selling raw produce for low margins. Learn the techniques to process, package, and brand your harvest for higher market value.",
+    curriculum: ["Post-Harvest Technology", "Processing Methods (Drying/Canning)", "Packaging & Labeling Laws", "Storage & Shelf Life", "Direct-to-Consumer Sales"]
   },
   {
     name: "New Product Development and Management",
-    icon: "fa-flask",
-    desc: "From kitchen recipe to supermarket shelf launch.",
-    link: "course-product-development.html"
+    price: 69,
+    overview: "A masterclass in innovation. Take an idea from a kitchen recipe to a shelf-stable commercial product ready for supermarkets.",
+    curriculum: ["Concept & Market Research", "Recipe Scaling & Prototyping", "Sensory Evaluation", "Regulatory Approval Steps", "Launch Strategy"]
   },
   {
     name: "Management",
-    icon: "fa-users-gear",
-    desc: "Leadership skills for high-pressure environments.",
-    link: "management_course.html"
+    price: 39,
+    overview: "Essential soft skills and hard tactics for managing teams in high-pressure food environments like kitchens and factories.",
+    curriculum: ["Leadership Dynamics", "Conflict Resolution", "Staff Scheduling & Efficiency", "Business Ethics", "Decision Making Frameworks"]
   }
 ];
 
-/* --- LOGIC --- */
-auth.onAuthStateChanged(async (user) => {
-    if (!user) {
-        window.location.href = 'index.html';
-        return;
+/* 3. FUNCTION TO RENDER COURSES (Decoupled from Data Fetching) */
+function renderCourses(enrolledList = [], pendingMap = {}) {
+  const grid = document.getElementById("coursesGrid");
+  if (!grid) return;
+  grid.innerHTML = ""; // Clear existing
+
+  coursesData.forEach(course => {
+    const hasAccess = enrolledList.includes(course.name);
+    const payment = pendingMap[course.name];
+
+    let badge = "", button = "";
+
+    if (hasAccess) {
+      badge = `<div class="status-badge approved">Active</div>`;
+      button = `<button class="btn btn-access" onclick="startCourse('${course.name}')">Enter Classroom</button>`;
+    } else if (payment && payment.status === "pending") {
+      badge = `<div class="status-badge pending">Pending</div>`;
+      button = `
+        <button class="btn btn-pending" disabled>Processing...</button>
+        <a class="link-cancel" onclick="cancelInvoice('${payment.id}')">Cancel invoice</a>
+      `;
+    } else {
+      // Default State (Show this immediately)
+      button = `<button class="btn btn-pay" onclick="createInvoice('${course.name}', ${course.price})">Enroll Now</button>`;
     }
 
-    // 1. Populate Header
-    const displayName = user.displayName || user.email.split('@')[0];
-    document.getElementById('studentName').textContent = displayName;
-    document.getElementById('welcomeTitle').textContent = `Welcome, ${displayName.split(' ')[0]}`;
-    document.getElementById('avatarLetter').textContent = displayName.charAt(0).toUpperCase();
-    document.getElementById('studentId').textContent = `ID: ${user.uid.substr(0, 6).toUpperCase()}`;
+    // Limit curriculum to 5 items (Increased from 3 to 5 to show new data)
+    const curriculumDisplay = course.curriculum.slice(0, 5).map(m => `<li>${m}</li>`).join("");
 
-    // 2. Fetch Data
-    const grid = document.getElementById('coursesGrid');
-    
-    try {
-        const docSnap = await db.collection('students').doc(user.uid).get();
-        let paidCourses = [];
-        
-        if (docSnap.exists) {
-            paidCourses = docSnap.data().coursesPaid || [];
-        }
-
-        renderCourses(paidCourses);
-
-    } catch (error) {
-        console.error("Error fetching data:", error);
-        grid.innerHTML = `<div class="empty-box" style="border-color: #ef4444; color:#ef4444;">Unable to load data. Please refresh.</div>`;
-    }
-});
-
-function renderCourses(paidList) {
-    const grid = document.getElementById('coursesGrid');
-    grid.innerHTML = "";
-
-    // Filter Logic: Match DB names with user paid list
-    const myCourses = coursesDB.filter(c => paidList.includes(c.name));
-
-    if (myCourses.length === 0) {
-        grid.innerHTML = `
-            <div class="empty-box">
-                <i class="fa-solid fa-folder-open" style="font-size:3rem; margin-bottom:20px; opacity:0.5;"></i>
-                <h3>No Active Courses</h3>
-                <p>You haven't enrolled in any courses yet. Visit the catalog to get started.</p>
-                <a href="courses.html" class="btn-start" style="width:200px; margin:20px auto;">Browse Catalog</a>
-            </div>
-        `;
-        return;
-    }
-
-    // Render Cards
-    myCourses.forEach((course, index) => {
-        // Animation delay for cascading effect
-        const delay = index * 0.1; 
-        
-        grid.innerHTML += `
-            <div class="course-card" style="animation: fadeIn 0.6s ease-out ${delay}s backwards;">
-                <div class="card-inner">
-                    <div class="status-chip"><i class="fa-solid fa-check"></i> Active</div>
-                    
-                    <i class="fa-solid ${course.icon} card-icon-3d"></i>
-                    
-                    <h3 class="card-title">${course.name}</h3>
-                    <p class="card-desc">${course.desc}</p>
-                    
-                    <button class="btn-start" onclick="window.location.href='${course.link}'">
-                        Enter Class <i class="fa-solid fa-arrow-right-long"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    });
+    grid.innerHTML += `
+      <div class="course-card">
+        <div class="card-top-accent"></div>
+        ${badge}
+        <div class="card-body">
+          <h3 class="card-title">${course.name}</h3>
+          <span class="label">Included</span>
+          <p style="font-size:0.85rem; color:#4b5563; margin-bottom:15px; line-height:1.5;">${course.overview}</p>
+          <ul class="curriculum">${curriculumDisplay}</ul>
+        </div>
+        <div class="card-footer">
+          <div class="price-area">
+            <span class="label" style="color:#64748b; margin:0;">Tuition</span>
+            <div class="price-val">$${course.price}</div>
+          </div>
+          ${button}
+        </div>
+      </div>
+    `;
+  });
 }
 
-window.logout = () => {
-    auth.signOut().then(() => window.location.href = 'index.html');
+// 🔥 CALL RENDER IMMEDIATELY (So they show up even if Firebase is slow)
+renderCourses([], {}); 
+
+
+/* 4. AUTH & FETCH REAL DATA */
+auth.onAuthStateChanged(async (user) => {
+  if (!user) {
+    location.href = 'index.html'; 
+    return;
+  }
+
+  // --- A. SET HEADER INFO ---
+  document.getElementById('studentId').textContent = user.uid.slice(0, 8).toUpperCase();
+  document.getElementById('studentName').textContent = user.displayName || user.email.split('@')[0];
+
+  // --- B. FETCH DATABASE DATA ---
+  let coursesPaid = [];
+  try {
+    const studentDoc = await db.collection('students').doc(user.uid).get();
+    if (studentDoc.exists) {
+      coursesPaid = studentDoc.data().coursesPaid || [];
+    } else {
+      // Create profile if missing
+      await db.collection('students').doc(user.uid).set({ 
+        username: user.email.split('@')[0], 
+        email: user.email 
+      }, { merge: true });
+    }
+  } catch (err) {
+    console.error("Error fetching student profile:", err);
+  }
+
+  // Fetch pending payments
+  const paymentMap = {};
+  try {
+    const paymentsSnap = await db.collection('payments')
+      .where('studentId', '==', user.uid)
+      .get();
+    
+    paymentsSnap.forEach(doc => {
+      paymentMap[doc.data().courseName] = { ...doc.data(), id: doc.id };
+    });
+  } catch (err) {
+    console.error("Error fetching payments:", err);
+  }
+
+  // Fetch certificates count
+  let certCount = 0;
+  try {
+    const certSnap = await db.collection('students').doc(user.uid).collection('certificates').get();
+    certCount = certSnap.size;
+  } catch (err) {
+    console.log("No certificates collection found or permission error");
+  }
+
+  // --- C. RE-RENDER WITH REAL DATA ---
+  renderCourses(coursesPaid, paymentMap);
+
+  // --- D. UPDATE STATS ---
+  const enrolledCount = coursesPaid.length;
+  document.getElementById('coursesEnrolled').textContent = enrolledCount;
+  document.getElementById('certificatesCount').textContent = certCount;
+
+  let rate = 0;
+  if (enrolledCount > 0) rate = (certCount / enrolledCount) * 100;
+  document.getElementById('completionRate').textContent = `${rate.toFixed(0)}%`;
+});
+
+/* 5. BUTTON ACTIONS */
+window.logout = function() {
+  auth.signOut().then(() => location.href = 'index.html');
+}
+
+window.createInvoice = function(courseName, price) {
+  const user = auth.currentUser;
+  if (!confirm(`Confirm enrollment for:\n${courseName}\nPrice: $${price}`)) return;
+
+  // Check duplicate pending
+  db.collection('payments')
+    .where("studentId", "==", user.uid)
+    .where("courseName", "==", courseName)
+    .where("status", "==", "pending")
+    .get()
+    .then(snap => {
+      if (!snap.empty) {
+        window.location.href = `student-details.html?invoiceId=${snap.docs[0].id}`;
+      } else {
+        // Create new
+        db.collection('payments').add({
+          studentId: user.uid,
+          studentName: user.displayName || "Student",
+          email: user.email,
+          courseName: courseName,
+          price: price,
+          paymentMethod: "Manual",
+          invoiceNumber: `FBA-${Date.now()}`,
+          status: "pending",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(docRef => {
+          window.location.href = `student-details.html?invoiceId=${docRef.id}`;
+        });
+      }
+    });
 };
+
+window.cancelInvoice = function(invoiceId) {
+  if (!confirm("Cancel this pending invoice?")) return;
+  db.collection('payments').doc(invoiceId).delete().then(() => location.reload());
+};
+
+window.startCourse = function(courseName) {
+  const coursePages = {
+    "Management": "management_course.html",
+    "Food Business Management Course": "course-food-business-management.html",
+    "Financial Management for Food Processors": "course-financial-management.html",
+    "Food Value Addition Course for Farmers": "course-value-addition.html",
+    "New Product Development and Management": "course-product-development.html"
+  };
+  const page = coursePages[courseName];
+  if (page) window.location.href = page;
+  else alert("Course page not linked.");
+};
+
+/* 6. SLIDER LOGIC */
+let slides = document.querySelectorAll('.slide');
+let i = 0;
+setInterval(() => {
+  slides[i].classList.remove('active');
+  i = (i + 1) % slides.length;
+  slides[i].classList.add('active');
+}, 4500);
+
+/* Page Transition */
+document.querySelectorAll('.nav-link').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    document.getElementById('pageTransition').classList.add('active');
+    setTimeout(() => window.location = link.href, 420);
+  });
+});
 </script>
 
 </body>
 </html>
+
+
