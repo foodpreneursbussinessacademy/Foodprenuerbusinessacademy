@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice - Food Business Academy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #4338ca;
+            --accent: #6366f1;
+            --text-main: #1e293b;
+            --text-light: #64748b;
+            --bg-gradient: radial-gradient(circle at 10% 20%, rgb(239, 246, 255) 0%, rgb(219, 228, 255) 90%);
+        }
+
+        * { box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+
+        body {
+            margin: 0;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        /* --- ACTION BAR --- */
+        .action-bar {
+            max-width: 800px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .btn-back {
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(10px);
+            transition: 0.3s;
+        }
+        .btn-back:hover { background: white; transform: translateX(-5px); }
+
+        .btn-download {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.3s;
+        }
+        .btn-download:hover { background: #3730a3; transform: translateY(-2px); }
+
+        /* --- INVOICE CONTAINER --- */
+        #invoice-card {
+            background: white;
+            width: 100%;
+            max-width: 800px;
+            padding: 60px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Watermark */
+        .watermark {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 8rem;
+            font-weight: 900;
+            color: rgba(0, 0, 0, 0.03);
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        .inv-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 30px;
+            margin-bottom: 40px;
+        }
+
+        .logo-section h2 {
+            margin: 0;
+            color: var(--primary);
+            font-weight: 800;
+            letter-spacing: -1px;
+        }
+        .logo-section p { margin: 5px 0; color: var(--text-light); font-size: 0.9rem; }
+
+        .title-section { text-align: right; }
+        .title-section h1 { margin: 0; font-size: 2.5rem; letter-spacing: 2px; color: #cbd5e1; }
+
+        .billing-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .bill-label {
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-light);
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .bill-value { font-weight: 600; color: var(--text-main); font-size: 1.1rem; }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+        }
+        th {
+            text-align: left;
+            background: #f8fafc;
+            padding: 15px;
+            color: var(--text-light);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        td { padding: 20px 15px; border-bottom: 1px solid #f1f5f9; }
+
+        .total-row td {
+            border-bottom: none;
+            padding-top: 30px;
+            font-size: 1.2rem;
+            font-weight: 800;
+        }
+        .total-box {
+            background: var(--primary);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        /* Payment Instructions */
+        .instructions {
+            background: #fdf2f8;
+            border-left: 4px solid #ec4899;
+            padding: 20px;
+            border-radius: 0 12px 12px 0;
+            margin-top: 20px;
+        }
+        .instructions h4 { margin: 0 0 10px 0; color: #9d174d; }
+        .instructions p { margin: 5px 0; font-size: 0.9rem; color: #be185d; }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .action-bar { display: none; }
+            #invoice-card { box-shadow: none; border: none; width: 100%; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="action-bar">
+        <a href="courses.html" class="btn-back"><i class="fas fa-arrow-left"></i> Back to Courses</a>
+        <button class="btn-download" onclick="downloadPDF()">
+            <i class="fas fa-file-pdf"></i> Download PDF
+        </button>
+    </div>
+
+    <div id="invoice-card">
+        <div class="watermark">UNPAID</div>
+
+        <div class="inv-header">
+            <div class="logo-section">
+                <h2>FBA ACADEMY</h2>
+                <p>Food Business Academy Ltd.</p>
+                <p>Harare, Zimbabwe</p>
+                <p>+263 773 371 163</p>
+            </div>
+            <div class="title-section">
+                <h1>INVOICE</h1>
+                <p style="font-weight: 700; color: var(--text-main); margin-top: 10px;">
+                    Date: <span id="inv-date">--/--/----</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="billing-grid">
+            <div>
+                <span class="bill-label">Billed To</span>
+                <div class="bill-value" id="student-email">Loading...</div>
+                <div id="student-name" style="color: var(--text-light);">Student Member</div>
+            </div>
+            <div style="text-align: right;">
+                <span class="bill-label">Invoice Number</span>
+                <div class="bill-value" id="inv-number">FBA-XXXXXX</div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th style="text-align: center;">Qty</th>
+                    <th style="text-align: right;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <div style="font-weight: 700;" id="course-name">Course Name</div>
+                        <div style="font-size: 0.85rem; color: var(--text-light);">Full lifetime access to module & certificate</div>
+                    </td>
+                    <td style="text-align: center;">1</td>
+                    <td style="text-align: right; font-weight: 700;" id="course-price">$0.00</td>
+                </tr>
+                <tr class="total-row">
+                    <td></td>
+                    <td style="text-align: right; font-weight: 600; color: var(--text-light);">Grand Total:</td>
+                    <td style="text-align: right;">
+                        <div class="total-box" id="total-price">$0.00</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="instructions">
+            <h4><i class="fas fa-info-circle"></i> Payment Instructions</h4>
+            <p><strong>EcoCash:</strong> 0773371163 (Petronela H.)</p>
+            <p><strong>OneMoney:</strong> 0718625498</p>
+            <p><strong>Reference:</strong> Please use your Email or Invoice Number</p>
+            <p style="margin-top: 10px; font-weight: 700;">Send proof of payment to WhatsApp: +263 773 371 163</p>
+        </div>
+
+        <div style="margin-top: 50px; text-align: center; color: var(--text-light); font-size: 0.85rem; border-top: 1px solid #f1f5f9; padding-top: 20px;">
+            Thank you for choosing Food Business Academy. Empowering food entrepreneurs.
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
+        import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+            authDomain: "students-login-29409.firebaseapp.com",
+            projectId: "students-login-29409",
+            storageBucket: "students-login-29409.firebasestorage.app",
+            messagingSenderId: "634331456872",
+            appId: "1:634331456872:web:6dae360c5e28d8356562dd",
+            measurementId: "G-96XXYG1VR2"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Get URL Params
+        const urlParams = new URLSearchParams(window.location.search);
+        const courseNameParam = urlParams.get('name');
+
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) {
+                window.location.href = "login.html";
+                return;
+            }
+
+            document.getElementById('student-email').textContent = user.email;
+            document.getElementById('inv-date').textContent = new Date().toLocaleDateString();
+
+            // Fetch specific payment record from Firestore
+            const q = query(
+                collection(db, "payments"), 
+                where("studentId", "==", user.uid), 
+                where("courseName", "==", courseNameParam),
+                where("status", "==", "pending")
+            );
+
+            const querySnapshot = await getDocs(q);
+            
+            if (!querySnapshot.empty) {
+                const data = querySnapshot.docs[0].data();
+                document.getElementById('inv-number').textContent = data.invoiceNumber || querySnapshot.docs[0].id;
+                document.getElementById('course-name').textContent = data.courseName;
+                document.getElementById('course-price').textContent = `$${data.price}`;
+                document.getElementById('total-price').textContent = `$${data.price}`;
+            } else {
+                // Fallback to URL params if firestore record not found yet
+                document.getElementById('course-name').textContent = courseNameParam;
+                document.getElementById('course-price').textContent = `$${urlParams.get('price') || '0.00'}`;
+                document.getElementById('total-price').textContent = `$${urlParams.get('price') || '0.00'}`;
+            }
+        });
+
+        window.downloadPDF = function() {
+            const element = document.getElementById('invoice-card');
+            const invNum = document.getElementById('inv-number').textContent;
+            const opt = {
+                margin: 0.5,
+                filename: `FBA_Invoice_${invNum}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        };
+    </script>
+</body>
+</html>
