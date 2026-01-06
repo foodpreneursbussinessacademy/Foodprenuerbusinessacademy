@@ -211,121 +211,159 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-                            <script>
-        // --- 1. CONFIGURATION ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
-            authDomain: "students-login-29409.firebaseapp.com",
-            projectId: "students-login-29409",
-            storageBucket: "students-login-29409.firebasestorage.app",
-            messagingSenderId: "634331456872",
-            appId: "1:634331456872:web:6dae360c5e28d8356562dd",
-            measurementId: "G-96XXYG1VR2"
-        };
+                            
+                <script>
+    // --- 1. CONFIGURATION ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+        authDomain: "students-login-29409.firebaseapp.com",
+        projectId: "students-login-29409",
+        storageBucket: "students-login-29409.firebasestorage.app",
+        messagingSenderId: "634331456872",
+        appId: "1:634331456872:web:6dae360c5e28d8356562dd",
+        measurementId: "G-96XXYG1VR2"
+    };
 
-        if (!firebase.apps.length) {
-            firebase.initializeApp(firebaseConfig);
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    // --- 2. GET PARAMS FROM URL ---
+    const urlParams = new URLSearchParams(window.location.search);
+    // Support ?id= or ?invoiceId=
+    const invoiceId = urlParams.get('id') || urlParams.get('invoiceId'); 
+    const courseNameParam = urlParams.get('name');
+
+    // --- 3. AUTH & DATA EXTRACTION ---
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+            console.log("User not logged in, redirecting...");
+            // window.location.href = "login.html"; // Uncomment when ready
+            return;
         }
-        const db = firebase.firestore();
-        const auth = firebase.auth();
 
-        // --- 2. GET PARAMS FROM URL ---
-        const urlParams = new URLSearchParams(window.location.search);
-        const invoiceId = urlParams.get('id') || urlParams.get('invoiceId');
-        const courseNameParam = urlParams.get('name');
+        console.log("User detected:", user.email);
 
-        // --- 3. AUTH & DATA EXTRACTION ---
-        auth.onAuthStateChanged(async (user) => {
-            if (!user) {
-                window.location.href = "login.html"; // Redirect if not logged in
-                return;
-            }
+        try {
+            let invoiceData = null;
+            let finalId = "";
 
-            try {
-                let invoiceData = null;
-                let finalId = "";
-
-                // STRATEGY A: Fetch by specific ID (Best for direct links)
-                if (invoiceId) {
-                    const docSnap = await db.collection("payments").doc(invoiceId).get();
-                    if (docSnap.exists) {
-                        invoiceData = docSnap.data();
+            // --- STRATEGY A: Fetch by specific Invoice ID (Best/Fastest) ---
+            if (invoiceId) {
+                console.log("Attempting to fetch by ID:", invoiceId);
+                const docSnap = await db.collection("payments").doc(invoiceId).get();
+                
+                // We check if it exists AND if the user owns it (security check)
+                if (docSnap.exists) {
+                    const data = docSnap.data();
+                    // Double check email matches to be safe on client side
+                    if(data.email === user.email || data.studentId === user.uid) {
+                        invoiceData = data;
                         finalId = docSnap.id;
                     }
-                } 
-                
-                // STRATEGY B: Extract the LATEST saved invoice for this user/course
-                if (!invoiceData && courseNameParam) {
-                    const snapshot = await db.collection("payments")
-                        .where("email", "==", user.email)
-                        .where("courseName", "==", courseNameParam)
-                        .orderBy("createdAt", "desc")
-                        .limit(1)
-                        .get();
-
-                    if (!snapshot.empty) {
-                        invoiceData = snapshot.docs[0].data();
-                        finalId = snapshot.docs[0].id;
-                    }
                 }
-
-                // --- 4. DISPLAY THE EXTRACTED DATA ---
-                if (invoiceData) {
-                    populateInvoice(invoiceData, finalId);
-                } else {
-                    document.getElementById('loading-msg').textContent = "No saved invoice found for this course.";
-                }
-
-            } catch (error) {
-                console.error("Error extracting invoice:", error);
-                document.getElementById('loading-msg').textContent = "Error accessing database.";
-            }
-        });
-
-        function populateInvoice(data, id) {
-            document.getElementById('loading-msg').style.display = 'none';
-
-            // Fill text fields
-            document.getElementById('inv-num').textContent = data.invoiceNumber || id;
-            document.getElementById('inv-method').textContent = data.paymentMethod || "N/A";
-            document.getElementById('inv-student-name').textContent = data.studentName || "Student";
-            document.getElementById('inv-student-email').textContent = data.email || "";
-            document.getElementById('inv-course-name').textContent = data.courseName || "Course";
+            } 
             
-            // Fill prices
-            const price = data.price || "0.00";
-            document.getElementById('inv-course-price').textContent = "$" + price;
-            document.getElementById('inv-final-total').textContent = "$" + price;
+            // --- STRATEGY B: Fetch by Course Name (Fallback) ---
+            // REMOVED .orderBy() to prevent "Missing Index" errors
+            if (!invoiceData && courseNameParam) {
+                console.log("Attempting to fetch by Course Name:", courseNameParam);
+                
+                const snapshot = await db.collection("payments")
+                    .where("email", "==", user.email)
+                    .where("courseName", "==", courseNameParam)
+                    .get();
 
-            // Format Date
-            if (data.createdAt && data.createdAt.toDate) {
-                const date = data.createdAt.toDate();
-                document.getElementById('inv-date').textContent = date.toLocaleDateString('en-GB', {
-                    day: 'numeric', month: 'short', year: 'numeric'
-                });
+                if (!snapshot.empty) {
+                    // Manually sort results in Javascript to find the newest one
+                    // This avoids needing a composite index in Firebase Console
+                    const docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    
+                    // Sort descending by createdAt (Newest first)
+                    docs.sort((a, b) => {
+                        const dateA = a.createdAt ? a.createdAt.seconds : 0;
+                        const dateB = b.createdAt ? b.createdAt.seconds : 0;
+                        return dateB - dateA;
+                    });
+
+                    invoiceData = docs[0]; // Take the newest one
+                    finalId = docs[0].id;
+                }
             }
 
-            // Update Watermark based on saved status
-            const wm = document.getElementById('watermark');
-            if (data.status === 'paid' || data.status === 'approved') {
-                wm.textContent = "PAID";
-                wm.classList.add('paid-stamp');
+            // --- 4. DISPLAY OR ERROR ---
+            if (invoiceData) {
+                console.log("Invoice Found:", finalId);
+                populateInvoice(invoiceData, finalId);
             } else {
-                wm.textContent = "UNPAID";
-                wm.classList.remove('paid-stamp');
+                console.warn("No matching invoice found.");
+                document.getElementById('loading-msg').innerHTML = 
+                    `No invoice found.<br><br>
+                     <small>Ensure you have clicked "Generate Invoice" on the previous page.</small>`;
             }
+
+        } catch (error) {
+            // This logs the ACTUAL error to your browser console (F12)
+            console.error("FULL ERROR DETAILS:", error);
+            
+            let errorMsg = "Error accessing database.";
+            if (error.code === 'permission-denied') {
+                errorMsg = "You do not have permission to view this invoice.";
+            }
+            document.getElementById('loading-msg').textContent = errorMsg;
+        }
+    });
+
+    function populateInvoice(data, id) {
+        document.getElementById('loading-msg').style.display = 'none';
+
+        // Fill text fields
+        document.getElementById('inv-num').textContent = data.invoiceNumber || id;
+        document.getElementById('inv-method').textContent = data.paymentMethod || "N/A";
+        document.getElementById('inv-student-name').textContent = data.studentName || "Student";
+        document.getElementById('inv-student-email').textContent = data.email || "";
+        document.getElementById('inv-course-name').textContent = data.courseName || "Course";
+        
+        // Fill prices
+        const price = data.price || "0.00";
+        document.getElementById('inv-course-price').textContent = "$" + price;
+        document.getElementById('inv-final-total').textContent = "$" + price;
+
+        // Format Date safely
+        if (data.createdAt && data.createdAt.toDate) {
+            const date = data.createdAt.toDate();
+            document.getElementById('inv-date').textContent = date.toLocaleDateString('en-GB', {
+                day: 'numeric', month: 'short', year: 'numeric'
+            });
+        } else {
+            // Fallback if timestamp is missing or local
+            document.getElementById('inv-date').textContent = new Date().toLocaleDateString();
         }
 
-        function downloadPDF() {
-            const element = document.getElementById('invoice-paper');
-            const invNum = document.getElementById("inv-num").textContent.trim();
-            const opt = {
-                margin: 0.2, 
-                filename: `Invoice_${invNum}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true },
-                jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-            };
-            html2pdf().set(opt).from(element).save();
+        // Update Watermark based on saved status
+        const wm = document.getElementById('watermark');
+        // Check for various ways 'paid' might be stored
+        if (data.status === 'paid' || data.status === 'approved' || data.status === 'Paid') {
+            wm.textContent = "PAID";
+            wm.classList.add('paid-stamp');
+        } else {
+            wm.textContent = "UNPAID";
+            wm.classList.remove('paid-stamp');
         }
-    </script>
+    }
+
+    function downloadPDF() {
+        const element = document.getElementById('invoice-paper');
+        const invNum = document.getElementById("inv-num").textContent.trim();
+        const opt = {
+            margin: 0.2, 
+            filename: `Invoice_${invNum}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().set(opt).from(element).save();
+    }
+</script>
