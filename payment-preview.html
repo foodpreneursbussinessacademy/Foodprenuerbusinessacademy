@@ -317,7 +317,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
       </div>
     </div>
     <div class="inv-actions">
-      <button class="inv-btn btn-close-inv" onclick="finishAndRedirect()">Finish & Return to Courses</button>
+      <button class="inv-btn btn-close-inv" onclick="finishAndRedirect()">Finish & View Final Invoice</button>
       
       <button class="inv-btn btn-download" onclick="downloadPDF()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -331,7 +331,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-    <script>
+<script>
 // --- A. CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
@@ -354,6 +354,12 @@ let courseName = urlParams.get('name');
 let coursePrice = urlParams.get('price');
 let existingInvoiceId = urlParams.get('invoiceId');
 
+// Global User Vars
+let studentEmail = "";
+let studentId = "";
+let studentName = "";
+let generatedInvoiceId = ""; // FIX: Global variable to track the ID
+
 // Display Logic
 if (courseName && coursePrice) {
     document.getElementById("displayCourse").textContent = courseName;
@@ -367,11 +373,6 @@ if (courseName && coursePrice) {
     document.getElementById("displayPrice").textContent = "$" + coursePrice;
 }
 
-// Global User Vars
-let studentEmail = "";
-let studentId = "";
-let studentName = "";
-
 // --- C. AUTH CHECK ---
 firebase.auth().onAuthStateChanged((user) => {
     if (user) {
@@ -380,8 +381,7 @@ firebase.auth().onAuthStateChanged((user) => {
         studentName = user.displayName || localStorage.getItem("studentName") || "Student";
         document.getElementById("displayEmail").textContent = studentEmail;
     } else {
-        // Uncomment below to enforce login
-        // window.location.href = "index.html"; 
+        window.location.href = "index.html"; 
     }
 });
 
@@ -396,20 +396,13 @@ function selectPayment(methodValue, cardElement) {
 function proceedPayment(){
     const method = document.getElementById("method").value;
     const dateStr = new Date().toLocaleDateString();
-    let invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
     
-    // 1. Update Local Storage for courses.html status
-    if(studentEmail && courseName) {
-        const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
-        if(!statusData[studentEmail]) statusData[studentEmail] = {};
-        statusData[studentEmail][courseName] = "pending"; 
-        localStorage.setItem("courseStatus", JSON.stringify(statusData));
-    }
-
-    // 2. Populate Invoice Modal UI
-    if(existingInvoiceId) invNumber = existingInvoiceId;
+    // FIX: Generate the ID here and save it to the global variable
+    generatedInvoiceId = "FBA-" + Math.floor(100000 + Math.random() * 900000);
+    if(existingInvoiceId) generatedInvoiceId = existingInvoiceId;
     
-    document.getElementById("inv-num").textContent = invNumber; // Removed substring to keep full ID
+    // Populate Modal
+    document.getElementById("inv-num").textContent = generatedInvoiceId;
     document.getElementById("inv-date").textContent = dateStr;
     document.getElementById("inv-method").textContent = method;
     document.getElementById("inv-student-name").textContent = studentName;
@@ -417,58 +410,48 @@ function proceedPayment(){
     document.getElementById("inv-course-price").textContent = "$" + coursePrice;
     document.getElementById("inv-final-total").textContent = "$" + coursePrice;
 
-    // 3. Show Modal
     document.getElementById("invoice-modal-overlay").style.display = "flex";
 
-    // --- NEW: AUTO SAVE INVOICE ---
-    // We wait 800ms to ensure the modal is fully visible before taking the snapshot
-    setTimeout(() => {
-        downloadPDF();
-    }, 800);
-
-    // 4. Update Firestore
+    // Update Firestore
     if(studentEmail && courseName) {
-        if(existingInvoiceId) {
-             db.collection("payments").doc(existingInvoiceId).update({
-                paymentMethod: method,
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-             });
-        } else {
-            const paymentData = {
-                courseName: courseName,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                email: studentEmail,
-                invoiceNumber: invNumber,
-                paymentMethod: method,
-                price: coursePrice,
-                status: "pending", 
-                studentId: studentId,
-                studentName: studentName
-            };
-            db.collection("payments").doc(invNumber).set(paymentData);
-        }
+        const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
+        if(!statusData[studentEmail]) statusData[studentEmail] = {};
+        statusData[studentEmail][courseName] = "pending";
+        localStorage.setItem("courseStatus", JSON.stringify(statusData));
+
+        const paymentData = {
+            courseName: courseName,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            email: studentEmail,
+            invoiceNumber: generatedInvoiceId,
+            paymentMethod: method,
+            price: coursePrice,
+            status: "pending", 
+            studentId: studentId,
+            studentName: studentName
+        };
+        db.collection("payments").doc(generatedInvoiceId).set(paymentData);
     }
 }
 
 // --- E. FINISH & REDIRECT ---
 function finishAndRedirect() {
-    window.location.href = "courses.html";
+    // FIX: Redirect to the view page with the exact ID
+    window.location.href = `invoice-view.html?id=${generatedInvoiceId}`;
 }
 
 function downloadPDF(){
-    // Select the specific invoice area
     const element = document.getElementById('invoice-content');
     const invNum = document.getElementById("inv-num").textContent;
-    
     const opt = {
-        margin: 0,
-        filename: `Invoice_${invNum}.pdf`, // Custom filename
+        margin: 0.5,
+        filename: `Invoice-${invNum}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true }, // Higher scale for clarity
+        html2canvas: { scale: 2 },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
-    
-    // Generate and Save
     html2pdf().set(opt).from(element).save();
 }
 </script>
+</body>
+</html>
