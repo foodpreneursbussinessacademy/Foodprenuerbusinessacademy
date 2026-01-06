@@ -336,7 +336,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-<script>
+        <script>
 // --- A. CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
@@ -380,13 +380,13 @@ let studentName = "";
 // --- C. AUTH CHECK ---
 firebase.auth().onAuthStateChanged((user) => {
     if (user) {
+        console.log("User logged in:", user.email);
         studentEmail = user.email;
         studentId = user.uid;
         studentName = user.displayName || localStorage.getItem("studentName") || "Student";
         document.getElementById("displayEmail").textContent = studentEmail;
     } else {
-        // Uncomment below to enforce login if needed
-        // window.location.href = "index.html"; 
+        console.warn("No user logged in.");
     }
 });
 
@@ -398,11 +398,13 @@ function selectPayment(methodValue, cardElement) {
     cardElement.classList.add('active');
 }
 
-// --- UPDATED INTELLIGENT PAYMENT FUNCTION ---
+// --- UPDATED LOGIC (NO INDEX REQUIRED) ---
 async function proceedPayment() {
+    console.log("Starting Payment Process...");
+
     // 1. Validation: Ensure user is logged in
     if (!studentId) {
-        alert("Please log in to proceed.");
+        alert("System is still loading your profile or you are not logged in. Please wait 2 seconds and try again.");
         return;
     }
 
@@ -415,36 +417,43 @@ async function proceedPayment() {
     btn.textContent = "Checking records...";
 
     try {
-        // 2. INTELLIGENCE CHECK: Query Firestore for existing records
+        // 2. ROBUST CHECK: Get ALL payments for this student only
+        // This avoids the "Missing Index" error by doing only one filter.
+        console.log("Checking database for Student ID:", studentId);
+        
         const querySnapshot = await db.collection("payments")
             .where("studentId", "==", studentId)
-            .where("courseName", "==", courseName)
-            .limit(1) // We only need to know if ONE exists
             .get();
 
         let invNumber;
         let isDuplicate = false;
         let existingStatus = "pending";
 
+        // 3. MANUAL FILTER: Loop through results to find this specific course
         if (!querySnapshot.empty) {
-            // A record exists! Reuse the existing Invoice Number
-            const doc = querySnapshot.docs[0];
-            const data = doc.data();
-            
-            invNumber = doc.id; 
-            existingStatus = data.status;
-            isDuplicate = true;
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                // Check if the course name matches
+                if (data.courseName === courseName) {
+                    console.log("Found existing invoice:", doc.id);
+                    invNumber = doc.id;
+                    existingStatus = data.status;
+                    isDuplicate = true;
+                }
+            });
+        }
 
-            // Check if already paid
+        // 4. LOGIC HANDLER
+        if (isDuplicate) {
             if (existingStatus === 'paid') {
-                alert("You have already successfully paid for this course!");
+                alert("NOTICE: You have already paid for this course!");
                 window.location.href = "courses.html";
                 return;
             } else {
-                console.log("Pending invoice found. Updating existing record.");
+                console.log("Invoice exists but is pending. Updating...");
             }
         } else {
-            // No record found. Generate a NEW Invoice Number
+            console.log("No matching invoice found. Creating new one.");
             // If URL has invoiceID (from previous navigation), use it, else generate new
             if(existingInvoiceId){
                 invNumber = existingInvoiceId;
@@ -453,7 +462,7 @@ async function proceedPayment() {
             }
         }
 
-        // 3. Update UI with the determined Invoice Number
+        // 5. Update UI
         document.getElementById("inv-num").textContent = invNumber;
         document.getElementById("inv-date").textContent = dateStr;
         document.getElementById("inv-method").textContent = method;
@@ -462,15 +471,15 @@ async function proceedPayment() {
         document.getElementById("inv-course-price").textContent = "$" + coursePrice;
         document.getElementById("inv-final-total").textContent = "$" + coursePrice;
 
-        // 4. Update or Create in Firestore
+        // 6. Update or Create in Firestore
         if (isDuplicate) {
-            // UPDATE existing pending invoice with new method/time
+            // UPDATE
             await db.collection("payments").doc(invNumber).update({
                 paymentMethod: method,
                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
             });
         } else {
-            // CREATE new record
+            // CREATE
             await db.collection("payments").doc(invNumber).set({
                 courseName: courseName,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -490,15 +499,15 @@ async function proceedPayment() {
             localStorage.setItem("courseStatus", JSON.stringify(statusData));
         }
 
-        // 5. Show Modal and Auto-download
+        // 7. Show Modal and Auto-download
         document.getElementById("invoice-modal-overlay").style.display = "flex";
         setTimeout(() => {
             downloadPDF();
         }, 800);
 
     } catch (error) {
-        console.error("Error processing payment:", error);
-        alert("An error occurred. Please try again.");
+        console.error("FATAL ERROR:", error);
+        alert("An error occurred: " + error.message);
     } finally {
         // Re-enable button
         btn.disabled = false;
@@ -526,5 +535,3 @@ function downloadPDF(){
     html2pdf().set(opt).from(element).save();
 }
 </script>
-</body>
-</html>
