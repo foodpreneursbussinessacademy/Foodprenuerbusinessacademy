@@ -32,6 +32,20 @@ body {
     padding: 20px;
 }
 
+/* Loading Overlay */
+#loading-screen {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: #fff; z-index: 99999;
+    display: flex; justify-content: center; align-items: center;
+    flex-direction: column;
+}
+.loader {
+    border: 5px solid #f3f3f3; border-top: 5px solid var(--primary);
+    border-radius: 50%; width: 50px; height: 50px;
+    animation: spin 1s linear infinite; margin-bottom: 20px;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
 /* Main Card */
 .container { 
     width: 100%; 
@@ -42,6 +56,7 @@ body {
     box-shadow: 0 20px 40px rgba(79, 70, 229, 0.15); 
     text-align: center;
     border-top: 5px solid var(--secondary);
+    display: none; /* Hidden until checks pass */
 }
 
 .logo-img {
@@ -121,11 +136,6 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
     font-weight: 600;
     cursor: pointer;
     box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
-    transition: opacity 0.3s;
-}
-.main-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
 }
 
 /* --- INVOICE MODAL --- */
@@ -212,7 +222,12 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 
 <body>
 
-<div class="container">
+<div id="loading-screen">
+    <div class="loader"></div>
+    <p>Verifying Course Eligibility...</p>
+</div>
+
+<div class="container" id="main-container">
     <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhIuGx_Tl93TWp5OZYxIn7iCPb3FhwXGTZTr_xVjfUAOy4dt2YzXq0c7H4VizrvCBNkCO12IlSymo4R-7Nq9mSffdpB9w6Yge3O2i0UovqE45XIW1jEyvZJg6sOjDfUUhdRJs2x_Bqui6goNnXmcV8hguXwcIUqsvMv5-kY-yNeo-Onr9TVspl88fBfiEsV/s1600/IMG-20251223-WA0001.png" alt="Logo" class="logo-img">
     
     <h2>Enrollment Summary</h2>
@@ -336,7 +351,7 @@ h2 { font-size: 22px; font-weight: 700; color: var(--text-dark); margin-bottom: 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-        <script>
+<script>
 // --- A. CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
@@ -357,9 +372,8 @@ const db = firebase.firestore();
 const urlParams = new URLSearchParams(window.location.search);
 let courseName = urlParams.get('name');
 let coursePrice = urlParams.get('price');
-let existingInvoiceId = urlParams.get('invoiceId');
 
-// Display Logic
+// Fallback logic
 if (courseName && coursePrice) {
     document.getElementById("displayCourse").textContent = courseName;
     document.getElementById("displayPrice").textContent = "$" + coursePrice;
@@ -372,21 +386,55 @@ if (courseName && coursePrice) {
     document.getElementById("displayPrice").textContent = "$" + coursePrice;
 }
 
-// Global User Vars
+// Global Vars
 let studentEmail = "";
 let studentId = "";
 let studentName = "";
+let strictPaymentId = ""; // This is the Aggressive Key
 
-// --- C. AUTH CHECK ---
-firebase.auth().onAuthStateChanged((user) => {
+// --- C. STRICT AUTH & ENROLLMENT CHECK (The Intelligence) ---
+firebase.auth().onAuthStateChanged(async (user) => {
     if (user) {
-        console.log("User logged in:", user.email);
         studentEmail = user.email;
         studentId = user.uid;
         studentName = user.displayName || localStorage.getItem("studentName") || "Student";
         document.getElementById("displayEmail").textContent = studentEmail;
+
+        // 1. GENERATE STRICT ID (User ID + Clean Course Name)
+        // Removes spaces and symbols. Example: "uid123_Baking101"
+        const sanitizedCourse = courseName.replace(/[^a-zA-Z0-9]/g, "");
+        strictPaymentId = `${user.uid}_${sanitizedCourse}`;
+
+        // 2. CHECK DATABASE FOR DUPLICATES
+        try {
+            const docSnap = await db.collection("payments").doc(strictPaymentId).get();
+            
+            if (docSnap.exists) {
+                const data = docSnap.data();
+                
+                if (data.status === "paid" || data.status === "approved") {
+                    // === AGGRESSIVE BLOCK ===
+                    // If they paid, they are banned from this page.
+                    alert("ACCESS DENIED: You have already purchased this course. Redirecting...");
+                    window.location.href = "courses.html"; 
+                    return; 
+                } 
+                else if (data.status === "pending") {
+                    // If pending, allow them to stay, but log it.
+                    console.log("Resuming pending invoice session.");
+                }
+            }
+        } catch (err) {
+            console.error("Verification failed", err);
+        }
+
+        // 3. Remove Loading Screen & Show Content
+        document.getElementById("loading-screen").style.display = "none";
+        document.getElementById("main-container").style.display = "block";
+
     } else {
-        console.warn("No user logged in.");
+        // Not logged in -> Kick out
+        window.location.href = "index.html"; 
     }
 });
 
@@ -398,120 +446,57 @@ function selectPayment(methodValue, cardElement) {
     cardElement.classList.add('active');
 }
 
-// --- UPDATED LOGIC (NO INDEX REQUIRED) ---
-async function proceedPayment() {
-    console.log("Starting Payment Process...");
-
-    // 1. Validation: Ensure user is logged in
-    if (!studentId) {
-        alert("System is still loading your profile or you are not logged in. Please wait 2 seconds and try again.");
-        return;
-    }
-
+async function proceedPayment(){
     const method = document.getElementById("method").value;
     const dateStr = new Date().toLocaleDateString();
     
-    // Disable button to prevent double-clicks
-    const btn = document.querySelector(".main-btn");
-    btn.disabled = true;
-    btn.textContent = "Checking records...";
+    // We use the same STRICT ID generated during the Auth Check
+    // This guarantees that we never create a duplicate.
+    const invNumber = strictPaymentId; 
+    
+    // UI Updates
+    document.getElementById("inv-num").textContent = invNumber.substring(0, 12) + "..."; // Shorten for display
+    document.getElementById("inv-date").textContent = dateStr;
+    document.getElementById("inv-method").textContent = method;
+    document.getElementById("inv-student-name").textContent = studentName;
+    document.getElementById("inv-course-name").textContent = courseName;
+    document.getElementById("inv-course-price").textContent = "$" + coursePrice;
+    document.getElementById("inv-final-total").textContent = "$" + coursePrice;
 
+    // Database Payload
+    const paymentData = {
+        courseName: courseName,
+        lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+        email: studentEmail,
+        invoiceNumber: invNumber, // The ID matches the Doc ID
+        paymentMethod: method,
+        price: coursePrice,
+        status: "pending", 
+        studentId: studentId,
+        studentName: studentName
+    };
+
+    // === INTELLIGENT SAVE ===
+    // We use .set() with { merge: true }
+    // If the user clicks this button 100 times, it simply updates the same 
+    // document 100 times. It creates ZERO duplicates.
     try {
-        // 2. ROBUST CHECK: Get ALL payments for this student only
-        // This avoids the "Missing Index" error by doing only one filter.
-        console.log("Checking database for Student ID:", studentId);
-        
-        const querySnapshot = await db.collection("payments")
-            .where("studentId", "==", studentId)
-            .get();
+        await db.collection("payments").doc(invNumber).set(paymentData, { merge: true });
 
-        let invNumber;
-        let isDuplicate = false;
-        let existingStatus = "pending";
+        // Update LocalStorage status for courses.html
+        const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
+        if(!statusData[studentEmail]) statusData[studentEmail] = {};
+        statusData[studentEmail][courseName] = "pending"; 
+        localStorage.setItem("courseStatus", JSON.stringify(statusData));
 
-        // 3. MANUAL FILTER: Loop through results to find this specific course
-        if (!querySnapshot.empty) {
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                // Check if the course name matches
-                if (data.courseName === courseName) {
-                    console.log("Found existing invoice:", doc.id);
-                    invNumber = doc.id;
-                    existingStatus = data.status;
-                    isDuplicate = true;
-                }
-            });
-        }
-
-        // 4. LOGIC HANDLER
-        if (isDuplicate) {
-            if (existingStatus === 'paid') {
-                alert("NOTICE: You have already paid for this course!");
-                window.location.href = "courses.html";
-                return;
-            } else {
-                console.log("Invoice exists but is pending. Updating...");
-            }
-        } else {
-            console.log("No matching invoice found. Creating new one.");
-            // If URL has invoiceID (from previous navigation), use it, else generate new
-            if(existingInvoiceId){
-                invNumber = existingInvoiceId;
-            } else {
-                invNumber = "FBA-" + Math.floor(100000 + Math.random() * 900000);
-            }
-        }
-
-        // 5. Update UI
-        document.getElementById("inv-num").textContent = invNumber;
-        document.getElementById("inv-date").textContent = dateStr;
-        document.getElementById("inv-method").textContent = method;
-        document.getElementById("inv-student-name").textContent = studentName;
-        document.getElementById("inv-course-name").textContent = courseName;
-        document.getElementById("inv-course-price").textContent = "$" + coursePrice;
-        document.getElementById("inv-final-total").textContent = "$" + coursePrice;
-
-        // 6. Update or Create in Firestore
-        if (isDuplicate) {
-            // UPDATE
-            await db.collection("payments").doc(invNumber).update({
-                paymentMethod: method,
-                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        } else {
-            // CREATE
-            await db.collection("payments").doc(invNumber).set({
-                courseName: courseName,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                email: studentEmail,
-                invoiceNumber: invNumber,
-                paymentMethod: method,
-                price: coursePrice,
-                status: "pending",
-                studentId: studentId,
-                studentName: studentName
-            });
-            
-            // Update LocalStorage status
-            const statusData = JSON.parse(localStorage.getItem("courseStatus")) || {};
-            if(!statusData[studentEmail]) statusData[studentEmail] = {};
-            statusData[studentEmail][courseName] = "pending"; 
-            localStorage.setItem("courseStatus", JSON.stringify(statusData));
-        }
-
-        // 7. Show Modal and Auto-download
+        // Show Invoice
         document.getElementById("invoice-modal-overlay").style.display = "flex";
-        setTimeout(() => {
-            downloadPDF();
-        }, 800);
+        
+        // Auto Download PDF
+        setTimeout(() => { downloadPDF(); }, 800);
 
     } catch (error) {
-        console.error("FATAL ERROR:", error);
-        alert("An error occurred: " + error.message);
-    } finally {
-        // Re-enable button
-        btn.disabled = false;
-        btn.textContent = "Generate Invoice & Pay";
+        alert("Error generating invoice: " + error.message);
     }
 }
 
@@ -526,12 +511,14 @@ function downloadPDF(){
     
     const opt = {
         margin: 0,
-        filename: `Invoice_${invNum}.pdf`,
+        filename: `Invoice_FBA.pdf`, 
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true }, 
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
     
     html2pdf().set(opt).from(element).save();
 }
 </script>
+</body>
+</html>
