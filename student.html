@@ -365,38 +365,6 @@ body {
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-
-    const displayName = user.displayName || user.email.split('@')[0];
-    document.getElementById('studentName').textContent = displayName;
-    document.getElementById('welcomeTitle').textContent = `Welcome, ${displayName.split(' ')[0]}`;
-    document.getElementById('avatarLetter').textContent = displayName.charAt(0).toUpperCase();
-    document.getElementById('studentId').textContent = `ID: ${user.uid.substr(0, 6).toUpperCase()}`;
-
-    const grid = document.getElementById('coursesGrid');
-    
-    try {
-        const docSnap = await db.collection('students').doc(user.uid).get();
-        let paidCourses = [];
-        
-        if (docSnap.exists) {
-            paidCourses = docSnap.data().coursesPaid || [];
-        }
-        renderCourses(paidCourses);
-
-    } catch (error) {
-        console.error("Error:", error);
-        grid.innerHTML = `<div class="empty-box">Unable to load data. Please refresh.</div>`;
-    }
-});
-
-function renderCourses(paidList) {
-    const grid = document.getElementById('coursesGrid');
-    grid.innerHTML = "";
-
-    // 1. Filter: Only get courses that are in the paidList
-    const myCourses = coursesDB.filter(c => paidList.includes(c.name));
-
-    // 2. Check: If student has NO paid courses
 <script>
 /* --- 1. THEME LOGIC --- */
 function toggleTheme() {
@@ -429,65 +397,7 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// --- MASTER COURSE LIST ---
-// The 'name' must match what is written in your database string
-const coursesDB = [
-  {
-    name: "Food Business Management",
-    icon: "fa-briefcase",
-    desc: "Complete guide to operations and models.",
-    link: "course-food-business-management.html"
-  },
-  {
-    name: "Financial Management",
-    icon: "fa-chart-line",
-    desc: "Master costing, yields, and cashflow.",
-    link: "course-financial-management.html"
-  },
-  {
-    name: "Food Value Addition",
-    icon: "fa-leaf",
-    desc: "Processing and packaging technology.",
-    link: "course-value-addition.html"
-  },
-  {
-    name: "New Product Development",
-    icon: "fa-flask",
-    desc: "From kitchen recipe to supermarket launch.",
-    link: "course-product-development.html"
-<script>
-/* --- 1. THEME LOGIC --- */
-function toggleTheme() {
-    const html = document.documentElement;
-    const btnIcon = document.querySelector('#themeSwitch i');
-    
-    if (html.getAttribute('data-theme') === 'dark') {
-        html.setAttribute('data-theme', 'light');
-        btnIcon.classList.remove('fa-sun');
-        btnIcon.classList.add('fa-moon');
-    } else {
-        html.setAttribute('data-theme', 'dark');
-        btnIcon.classList.remove('fa-moon');
-        btnIcon.classList.add('fa-sun');
-    }
-}
-
-/* --- FIREBASE CONFIG --- */
-const firebaseConfig = {
-  apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
-  authDomain: "students-login-29409.firebaseapp.com",
-  projectId: "students-login-29409",
-  storageBucket: "students-login-29409.firebasestorage.app",
-  messagingSenderId: "634331456872",
-  appId: "1:634331456872:web:6dae360c5e28d8356562dd",
-  measurementId: "G-96XXYG1VR2"
-};
-
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-// Course Data (Ensure these names are correct)
+// Course Data - The Master List
 const coursesDB = [
   {
     name: "Food Business Management",
@@ -521,13 +431,18 @@ const coursesDB = [
   }
 ];
 
+// --- HELPER: Cleans strings for comparison (Removes spaces, lowers case) ---
+function cleanString(str) {
+    if (!str) return "";
+    return str.toLowerCase().trim();
+}
+
 auth.onAuthStateChanged(async (user) => {
     if (!user) {
         window.location.href = 'index.html';
         return;
     }
 
-    // Set User UI Details
     const displayName = user.displayName || user.email.split('@')[0];
     document.getElementById('studentName').textContent = displayName;
     document.getElementById('welcomeTitle').textContent = `Welcome, ${displayName.split(' ')[0]}`;
@@ -541,18 +456,21 @@ auth.onAuthStateChanged(async (user) => {
         let paidCourses = [];
         
         if (docSnap.exists) {
-            // Check if field exists, otherwise default to empty array
-            paidCourses = docSnap.data().coursesPaid || [];
+            const data = docSnap.data();
+            // Default to empty array if 'coursesPaid' field is missing
+            paidCourses = data.coursesPaid || [];
+            
+            // Console log for troubleshooting (View in Browser Console F12)
+            console.log("Fetched Paid Courses for user:", paidCourses);
+        } else {
+            console.log("No student document found for this ID.");
         }
-        
-        // DEBUGGING: This will show up in your browser Console (F12)
-        console.log("Courses found in Firebase:", paidCourses);
-        
+
         renderCourses(paidCourses);
 
     } catch (error) {
-        console.error("Firebase Error:", error);
-        grid.innerHTML = `<div class="empty-state-box"><h3>Error Loading Data</h3><p>Please check your internet connection.</p></div>`;
+        console.error("Error fetching data:", error);
+        grid.innerHTML = `<div class="empty-state-box">Unable to load data. Please refresh.</div>`;
     }
 });
 
@@ -560,12 +478,15 @@ function renderCourses(paidList) {
     const grid = document.getElementById('coursesGrid');
     grid.innerHTML = "";
 
-    // --- FIX IS HERE ---
-    // We clean up strings to ensure matching works even if there are spaces or lowercase issues
-    const myCourses = coursesDB.filter(localCourse => {
-        return paidList.some(dbCourseName => {
-            // Convert both to lowercase and remove outer spaces before comparing
-            return dbCourseName.trim().toLowerCase() === localCourse.name.trim().toLowerCase();
+    // 1. ROBUST FILTERING: Compare cleaned strings
+    const myCourses = coursesDB.filter(staticCourse => {
+        return paidList.some(paidCourseName => {
+            const dbName = cleanString(paidCourseName);
+            const codeName = cleanString(staticCourse.name);
+            
+            // Match if exact (cleaned) match OR if one contains the other
+            // Example: "Financial Management" matches "Financial Management " (extra space)
+            return dbName === codeName || (dbName.length > 5 && codeName.includes(dbName));
         });
     });
 
@@ -576,8 +497,8 @@ function renderCourses(paidList) {
                 <div class="empty-icon"><i class="fa-solid fa-folder-open"></i></div>
                 <h3 class="empty-title">No Active Classes Found</h3>
                 <p class="empty-desc">
-                    We found your account, but no active courses matched our records. 
-                    If you just paid, please allow some time for activation or contact support.
+                    Only courses you have paid for and that have been approved by the admin appear here. 
+                    If you are looking for new classes, please visit the catalog.
                 </p>
                 <a href="courses.html" class="btn-browse">
                     View Course Catalog <i class="fa-solid fa-arrow-right"></i>
@@ -609,3 +530,6 @@ window.logout = () => {
     auth.signOut().then(() => window.location.href = 'index.html');
 };
 </script>
+
+</body>
+</html>
