@@ -11,7 +11,6 @@
 <style>
 /* --- VARIABLES --- */
 :root {
-    /* DEFAULT: LIGHT MODE */
     --bg-body: #f3f4f6;
     --bg-sidebar: #ffffff;
     --surface-glass: #ffffff;
@@ -28,7 +27,6 @@
     --mesh-opacity: 0.4;
 }
 
-/* DARK MODE OVERRIDES */
 [data-theme="dark"] {
     --bg-body: #09090b;
     --bg-sidebar: rgba(0, 0, 0, 0.3);
@@ -66,7 +64,7 @@ body {
     transition: opacity 0.5s ease;
 }
 
-/* --- SIDEBAR (Desktop) --- */
+/* --- SIDEBAR --- */
 .sidebar {
     width: 260px;
     height: 100vh;
@@ -118,13 +116,9 @@ body {
     box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.4);
 }
 .nav-link:hover span, .nav-link.active span { color: var(--text-main); }
-
-/* Whatsapp Green Hover Effect for Community Button */
 .nav-link.community-btn:hover i { background: #25D366; color: white; }
-
 .logout-btn { margin-top: auto; }
 .logout-btn:hover i { background: #fee2e2; color: #ef4444; }
-[data-theme="dark"] .logout-btn:hover i { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
 
 /* --- MAIN CONTENT --- */
 .main-wrapper { flex-grow: 1; padding: 40px 50px; max-width: 1600px; margin: 0 auto; }
@@ -198,85 +192,45 @@ body {
 [data-theme="dark"] .btn-start { background: #ffffff; color: #000000; }
 .btn-start:hover { opacity: 0.9; transform: scale(0.98); }
 
-/* --- EMPTY STATE STYLING --- */
+/* --- EMPTY STATE --- */
 .empty-state-box {
-    grid-column: 1 / -1; /* Spans full width */
+    grid-column: 1 / -1; 
     background: var(--surface-glass);
     border: 1px solid var(--border-glass);
     border-radius: 24px;
     padding: 60px 20px;
     text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 20px;
     animation: fadeIn 0.8s ease-out;
 }
 .empty-icon {
-    font-size: 3rem;
-    color: var(--text-muted);
-    background: var(--bg-body);
-    width: 80px; height: 80px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 10px;
+    font-size: 3rem; color: var(--text-muted); background: var(--bg-body);
+    width: 80px; height: 80px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 10px;
 }
-.empty-title { font-size: 1.5rem; font-weight: 700; color: var(--text-main); }
-.empty-desc { color: var(--text-muted); max-width: 500px; line-height: 1.6; }
 .btn-browse {
-    background: var(--primary-accent);
-    color: white;
-    padding: 12px 30px;
-    border-radius: 50px;
-    text-decoration: none;
-    font-weight: 700;
-    margin-top: 10px;
-    transition: transform 0.2s, box-shadow 0.2s;
+    background: var(--primary-accent); color: white;
+    padding: 12px 30px; border-radius: 50px; text-decoration: none; font-weight: 700;
     display: inline-flex; align-items: center; gap: 10px;
-}
-.btn-browse:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.4);
 }
 
 @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* --- 8 ICON GRID LAYOUT FOR MOBILE --- */
+/* --- MOBILE --- */
 @media(max-width: 900px) {
     body { flex-direction: column; }
-    
     .sidebar { 
-        width: 100%; height: auto; 
-        padding: 15px 10px; border-right: none; 
-        border-bottom: 1px solid var(--border-glass); 
+        width: 100%; height: auto; padding: 15px 10px; 
+        border-right: none; border-bottom: 1px solid var(--border-glass); 
         background: var(--bg-body);
     }
-    
     .brand-logo { display: none; }
-
-    /* The Logic for 4x2 Grid */
-    .nav-menu { 
-        flex-direction: row; 
-        flex-wrap: wrap; 
-        justify-content: center; 
-        gap: 10px; /* Slight gap */
-        padding-bottom: 5px;
-    }
-    
-    .nav-link { 
-        /* 22% width ensures 4 icons fit on top row perfectly with gap */
-        width: 22%; 
-        padding: 0;
-        margin-bottom: 5px;
-    }
-    
+    .nav-menu { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 10px; padding-bottom: 5px; }
+    .nav-link { width: 22%; padding: 0; margin-bottom: 5px; }
     .nav-link i { width: 40px; height: 40px; font-size: 1rem; border-radius: 12px; }
-    /* Smaller font for "Join Community" to fit */
     .nav-link span { font-size: 0.65rem; white-space: nowrap; }
-    
     .logout-btn { margin-left: 0; margin-top: 0; }
-    
     .main-wrapper { padding: 20px; }
     .top-bar { flex-direction: column-reverse; gap: 20px; align-items: flex-start; }
     .controls-area { width: 100%; justify-content: space-between; }
@@ -318,12 +272,10 @@ body {
             <i class="fa-solid fa-user-circle"></i> 
             <span>Profile</span>
         </a>
-        
         <a href="community.html" class="nav-link community-btn">
             <i class="fa-brands fa-whatsapp"></i> 
             <span>Join Community</span>
         </a>
-        
         <a href="#" onclick="logout()" class="nav-link logout-btn">
             <i class="fa-solid fa-power-off"></i> 
             <span>Logout</span>
@@ -332,18 +284,15 @@ body {
 </nav>
 
 <main class="main-wrapper">
-    
     <header class="top-bar">
         <div class="welcome-msg">
             <h1 id="welcomeTitle">Welcome back</h1>
             <p>Access your premium content below.</p>
         </div>
-        
         <div class="controls-area">
             <button class="theme-btn" id="themeSwitch" onclick="toggleTheme()" title="Switch Theme">
                 <i class="fa-solid fa-moon"></i>
             </button>
-
             <div class="user-profile">
                 <div class="user-info">
                     <span id="studentName">Loading...</span>
@@ -355,10 +304,7 @@ body {
     </header>
 
     <div class="section-title">Your Active Classrooms</div>
-    
-    <div class="grid" id="coursesGrid">
-        </div>
-
+    <div class="grid" id="coursesGrid"></div>
 </main>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -366,11 +312,10 @@ body {
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-/* --- 1. THEME LOGIC --- */
+/* --- THEME LOGIC --- */
 function toggleTheme() {
     const html = document.documentElement;
     const btnIcon = document.querySelector('#themeSwitch i');
-    
     if (html.getAttribute('data-theme') === 'dark') {
         html.setAttribute('data-theme', 'light');
         btnIcon.classList.remove('fa-sun');
@@ -397,41 +342,41 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Course Data - The Master List
+/* --- COURSE DATA (MATCHING CATALOG EXACTLY) --- */
 const coursesDB = [
   {
-    name: "Food Business Management",
+    name: "Food Business Management Course",
     icon: "fa-briefcase",
-    desc: "Complete guide to operations and models.",
+    desc: "Master compliance, models, and operations.",
     link: "course-food-business-management.html"
   },
   {
-    name: "Financial Management",
+    name: "Financial Management for Food Processors",
     icon: "fa-chart-line",
-    desc: "Master costing, yields, and cashflow.",
+    desc: "Unit costing, yield analysis, and profit.",
     link: "course-financial-management.html"
   },
   {
-    name: "Food Value Addition",
+    name: "Food Value Addition Course for Farmers",
     icon: "fa-leaf",
-    desc: "Processing and packaging technology.",
+    desc: "Turn raw produce into branded products.",
     link: "course-value-addition.html"
   },
   {
-    name: "New Product Development",
+    name: "New Product Development and Management",
     icon: "fa-flask",
-    desc: "From kitchen recipe to supermarket launch.",
+    desc: "From kitchen recipe to supermarket shelf.",
     link: "course-product-development.html"
   },
   {
-    name: "Management Skills",
+    name: "Management",
     icon: "fa-users-gear",
-    desc: "Leadership skills for pressure environments.",
+    desc: "Leadership tactics for high-pressure environments.",
     link: "management_course.html"
   }
 ];
 
-// --- HELPER: Cleans strings for comparison (Removes spaces, lowers case) ---
+// Helper: Cleans strings for comparison
 function cleanString(str) {
     if (!str) return "";
     return str.toLowerCase().trim();
@@ -443,6 +388,7 @@ auth.onAuthStateChanged(async (user) => {
         return;
     }
 
+    // Set Header Info
     const displayName = user.displayName || user.email.split('@')[0];
     document.getElementById('studentName').textContent = displayName;
     document.getElementById('welcomeTitle').textContent = `Welcome, ${displayName.split(' ')[0]}`;
@@ -457,19 +403,14 @@ auth.onAuthStateChanged(async (user) => {
         
         if (docSnap.exists) {
             const data = docSnap.data();
-            // Default to empty array if 'coursesPaid' field is missing
             paidCourses = data.coursesPaid || [];
-            
-            // Console log for troubleshooting (View in Browser Console F12)
-            console.log("Fetched Paid Courses for user:", paidCourses);
-        } else {
-            console.log("No student document found for this ID.");
+            console.log("Database Paid List:", paidCourses);
         }
 
         renderCourses(paidCourses);
 
     } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error("Error:", error);
         grid.innerHTML = `<div class="empty-state-box">Unable to load data. Please refresh.</div>`;
     }
 });
@@ -478,27 +419,25 @@ function renderCourses(paidList) {
     const grid = document.getElementById('coursesGrid');
     grid.innerHTML = "";
 
-    // 1. ROBUST FILTERING: Compare cleaned strings
+    // FILTER LOGIC: Only show courses that are in the user's paid list
     const myCourses = coursesDB.filter(staticCourse => {
         return paidList.some(paidCourseName => {
             const dbName = cleanString(paidCourseName);
             const codeName = cleanString(staticCourse.name);
             
-            // Match if exact (cleaned) match OR if one contains the other
-            // Example: "Financial Management" matches "Financial Management " (extra space)
+            // Check for match (Exact or Substring)
             return dbName === codeName || (dbName.length > 5 && codeName.includes(dbName));
         });
     });
 
-    // 2. Check: If student has NO paid courses matched
+    // EMPTY STATE: If no paid courses found
     if (myCourses.length === 0) {
         grid.innerHTML = `
             <div class="empty-state-box">
                 <div class="empty-icon"><i class="fa-solid fa-folder-open"></i></div>
-                <h3 class="empty-title">No Active Classes Found</h3>
+                <h3 class="empty-title">No Active Classes</h3>
                 <p class="empty-desc">
-                    Only courses you have paid for and that have been approved by the admin appear here. 
-                    If you are looking for new classes, please visit the catalog.
+                    You haven't purchased any courses yet, or your payment is still pending approval.
                 </p>
                 <a href="courses.html" class="btn-browse">
                     View Course Catalog <i class="fa-solid fa-arrow-right"></i>
@@ -508,7 +447,7 @@ function renderCourses(paidList) {
         return;
     }
 
-    // 3. Render: If courses exist, show the cards
+    // RENDER: Active Courses
     myCourses.forEach((course, index) => {
         grid.innerHTML += `
             <div class="course-card" style="animation: fadeIn 0.6s ease-out ${index * 0.1}s backwards;">
