@@ -468,24 +468,145 @@ function renderCourses(paidList) {
     const myCourses = coursesDB.filter(c => paidList.includes(c.name));
 
     // 2. Check: If student has NO paid courses
+<script>
+/* --- 1. THEME LOGIC --- */
+function toggleTheme() {
+    const html = document.documentElement;
+    const btnIcon = document.querySelector('#themeSwitch i');
+    
+    if (html.getAttribute('data-theme') === 'dark') {
+        html.setAttribute('data-theme', 'light');
+        btnIcon.classList.remove('fa-sun');
+        btnIcon.classList.add('fa-moon');
+    } else {
+        html.setAttribute('data-theme', 'dark');
+        btnIcon.classList.remove('fa-moon');
+        btnIcon.classList.add('fa-sun');
+    }
+}
+
+/* --- FIREBASE CONFIG --- */
+const firebaseConfig = {
+  apiKey: "AIzaSyC_lKWa4cM4cT337KkRw4sp7raQHl9aZWk",
+  authDomain: "students-login-29409.firebaseapp.com",
+  projectId: "students-login-29409",
+  storageBucket: "students-login-29409.firebasestorage.app",
+  messagingSenderId: "634331456872",
+  appId: "1:634331456872:web:6dae360c5e28d8356562dd",
+  measurementId: "G-96XXYG1VR2"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// --- MASTER COURSE LIST ---
+// The 'name' must match what is written in your database string
+const coursesDB = [
+  {
+    name: "Food Business Management",
+    icon: "fa-briefcase",
+    desc: "Complete guide to operations and models.",
+    link: "course-food-business-management.html"
+  },
+  {
+    name: "Financial Management",
+    icon: "fa-chart-line",
+    desc: "Master costing, yields, and cashflow.",
+    link: "course-financial-management.html"
+  },
+  {
+    name: "Food Value Addition",
+    icon: "fa-leaf",
+    desc: "Processing and packaging technology.",
+    link: "course-value-addition.html"
+  },
+  {
+    name: "New Product Development",
+    icon: "fa-flask",
+    desc: "From kitchen recipe to supermarket launch.",
+    link: "course-product-development.html"
+  },
+  {
+    name: "Management Skills",
+    icon: "fa-users-gear",
+    desc: "Leadership skills for pressure environments.",
+    link: "management_course.html"
+  }
+  // Add other courses here if needed...
+];
+
+auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    const displayName = user.displayName || user.email.split('@')[0];
+    document.getElementById('studentName').textContent = displayName;
+    document.getElementById('welcomeTitle').textContent = `Welcome, ${displayName.split(' ')[0]}`;
+    document.getElementById('avatarLetter').textContent = displayName.charAt(0).toUpperCase();
+    document.getElementById('studentId').textContent = `ID: ${user.uid.substr(0, 6).toUpperCase()}`;
+
+    const grid = document.getElementById('coursesGrid');
+    
+    try {
+        const docSnap = await db.collection('students').doc(user.uid).get();
+        let paidCoursesArray = [];
+        
+        if (docSnap.exists) {
+            // --- CRITICAL FIX: HANDLE STRING DATA ---
+            // 1. Get the raw data (e.g. "Food Business Management, Financial Management")
+            // Note: I am assuming the field name is 'coursesPaid'. If it is 'paidCourses', change it below.
+            const rawData = docSnap.data().coursesPaid; 
+
+            if (typeof rawData === 'string') {
+                // 2. Split the string by comma to create an Array
+                paidCoursesArray = rawData.split(',');
+            } else if (Array.isArray(rawData)) {
+                // Handle it just in case it's already an array
+                paidCoursesArray = rawData;
+            }
+        }
+        
+        // Clean the array (remove extra spaces around names)
+        paidCoursesArray = paidCoursesArray.map(s => s.trim());
+
+        console.log("Processed Courses:", paidCoursesArray);
+        renderCourses(paidCoursesArray);
+
+    } catch (error) {
+        console.error("Error:", error);
+        grid.innerHTML = `<div class="empty-state-box"><h3>Error</h3><p>Could not load your courses.</p></div>`;
+    }
+});
+
+function renderCourses(paidList) {
+    const grid = document.getElementById('coursesGrid');
+    grid.innerHTML = "";
+
+    // Filter Logic: Case Insensitive Matching
+    const myCourses = coursesDB.filter(localCourse => {
+        return paidList.some(userCourseName => {
+            return userCourseName.toLowerCase() === localCourse.name.toLowerCase();
+        });
+    });
+
     if (myCourses.length === 0) {
         grid.innerHTML = `
             <div class="empty-state-box">
                 <div class="empty-icon"><i class="fa-solid fa-folder-open"></i></div>
                 <h3 class="empty-title">No Active Classes Found</h3>
                 <p class="empty-desc">
-                    Only courses you have paid for and that have been approved by the admin appear here. 
-                    If you are looking for new classes, please visit the catalog.
+                    We see you are logged in, but we couldn't match your paid courses string 
+                    to our course list. Please contact admin.
                 </p>
-                <a href="courses.html" class="btn-browse">
-                    View Course Catalog <i class="fa-solid fa-arrow-right"></i>
-                </a>
+                <a href="courses.html" class="btn-browse">Browse Catalog</a>
             </div>
         `;
         return;
     }
 
-    // 3. Render: If courses exist, show the cards
     myCourses.forEach((course, index) => {
         grid.innerHTML += `
             <div class="course-card" style="animation: fadeIn 0.6s ease-out ${index * 0.1}s backwards;">
@@ -507,6 +628,3 @@ window.logout = () => {
     auth.signOut().then(() => window.location.href = 'index.html');
 };
 </script>
-
-</body>
-</html>
